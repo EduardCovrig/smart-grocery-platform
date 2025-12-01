@@ -1,0 +1,13 @@
+package covrig.eduard.project;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class SiteVanzariApplicationTests {
+
+	@Test
+	void contextLoads() {
+	}
+
+}
