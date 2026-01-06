@@ -11,6 +11,5 @@ import lombok.NoArgsConstructor;
 public class PlaceOrderDTO {
     @NotNull(message = "Adresa de livrare este obligatorie.")
     private Long addressId;
-    @NotNull(message = "Metoda de plata este obligatorie.")
-    private String paymentMethod;
+
 }

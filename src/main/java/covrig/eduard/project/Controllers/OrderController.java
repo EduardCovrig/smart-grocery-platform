@@ -3,6 +3,7 @@ package covrig.eduard.project.Controllers;
 import covrig.eduard.project.Services.OrderService;
 import covrig.eduard.project.dtos.order.OrderResponseDTO;
 import covrig.eduard.project.dtos.order.PlaceOrderDTO;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -21,7 +22,7 @@ public class OrderController {
     }
 
     @PostMapping
-    public ResponseEntity<OrderResponseDTO> placeOrder(Authentication authentication, PlaceOrderDTO dto)
+    public ResponseEntity<OrderResponseDTO> placeOrder(Authentication authentication, @RequestBody @Valid PlaceOrderDTO dto)
     {
         OrderResponseDTO order=orderService.placeOrder(authentication.getName(),dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(order);

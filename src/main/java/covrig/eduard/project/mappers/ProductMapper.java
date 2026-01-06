@@ -20,8 +20,6 @@ public interface ProductMapper {
     @Mapping(source="category.name",target="categoryName")
     ProductResponseDTO toDto(Product product);
 
-    //SURSA O REPREZINTA PRODUCTRESPOSNDTO, MAI JOS, PRODUCT, PRACTIC TIPUL RETURNAT
-
     //pe asta nu e niciun mapping pus
     List<ProductResponseDTO> toDtoList(List<Product> products);
     //functia este facuta in spate de MapStruct
