@@ -15,7 +15,7 @@ public class Discount {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Valoarea reducerii (procent sau sumă fixă)
+    // Valoarea reducerii (procent sau suma fixa)
     @Column(name = "discount_value")
     private Double discountValue;
 
