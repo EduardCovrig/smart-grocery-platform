@@ -58,15 +58,15 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Discount> discounts;
 
-    // 4. Interacțiuni (Composition - conform SQL ON DELETE CASCADE)
+    // 4. Interactiuni (Composition - conform SQL ON DELETE CASCADE)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<UserInteraction> interactions;
 
-    // 5. Cart Items (Dacă ștergi produsul, dispare din coșurile oamenilor)
+    // 5. Cart Items (Daca stergi produsul, dispare din cosurile oamenilor)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CartItem> cartItems;
 
-    // 6. Order Items (Atenție: istoric comenzi. SQL-ul tău are CASCADE, deci punem ALL)
+    // 6. Order Items
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems;
 }

@@ -13,7 +13,7 @@ public interface ProductRepository extends JpaRepository<Product,Long> {
     //gestiunea stocului optima
     public List<Product> findByStockQuantityGreaterThan(Integer quantity);
 
-    //pt preturi dinamice (in funcie de data de expirare)
+    //pt preturi dinamice (in functie de data de expirare)
     public List<Product> findByExpirationDateBefore(LocalDate date);
 
     //filtrare

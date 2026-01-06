@@ -1,0 +1,19 @@
+package covrig.eduard.project.dtos.cart;
+
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class AddToCartDTO {
+
+    @NotNull(message="Id-ul produsului este obligatoriu")
+    private Long productId;
+
+    @Min(value=1,message="Cantitatea introdusa trebuie sa fie minim 1")
+    private Integer quantity;
+}

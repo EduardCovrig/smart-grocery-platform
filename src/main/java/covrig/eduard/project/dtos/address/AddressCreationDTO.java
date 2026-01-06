@@ -12,11 +12,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class AddressCreationDTO {
 
-    @NotBlank(message="Strada este oblgiatorie.")
+    @NotBlank(message="Strada este obligatorie.")
     private String street;
-    @NotBlank(message="Orasul este oblgiatorie.")
+    @NotBlank(message="Orasul este obligatorie.")
     private String city;
-    @NotBlank(message="Codul postal este oblgiatorie.")
+    @NotBlank(message="Codul postal este obligatorie.")
     private String zipCode;
     @NotBlank(message="Tara este obligatorie.")
     private String country;

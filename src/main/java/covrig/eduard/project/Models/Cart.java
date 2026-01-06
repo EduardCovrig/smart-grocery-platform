@@ -15,7 +15,7 @@ public class Cart {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Relație 1:1 cu User (un cos unic per utilizator)
+    // Relatie 1:1 cu User (un cos unic per utilizator)
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true)
     private User user;

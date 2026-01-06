@@ -21,7 +21,7 @@ public class OrderItem {
     @Column(name = "price", nullable = false)
     private Double price;
 
-    // Prețul de bază la momentul achiziției
+    // Prețul de baza la momentul achiziției
     @Column(name = "base_price", nullable = false)
     private Double basePrice;
 

@@ -80,7 +80,7 @@ public class User implements UserDetails {
 
     @Override
     public String getUsername() {
-        return email; //metoda folosita de spring pentru a identifica user-ul. dar noi ne logam cu email nu cu username, d
+        return email; //metoda folosita de spring pentru a identifica user-ul. dar noi ne logam cu email nu cu username,
         // deci returnam email-ul.
     }
 

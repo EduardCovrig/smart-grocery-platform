@@ -25,6 +25,9 @@ public class Order {
     @Column(name = "total_price", nullable = false)
     private Double totalPrice;
 
+    /*@Column(name = "payment_method")
+    private String paymentMethod; */ //poate adaug ulterior asta, dar schimba baza de date, diagrama din licenta, tot.
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
