@@ -22,8 +22,9 @@ public class OrderService {
     private final AddressRepository addressRepository;
     private final OrderMapper orderMapper;
     private final ProductService productService;
+    private final UserInteractionService interactionService;
 
-    public OrderService(OrderRepository orderRepository, CartRepository cartRepository, ProductRepository productRepository, UserRepository userRepository, AddressRepository addressRepository, OrderMapper orderMapper, ProductService productService) {
+    public OrderService(OrderRepository orderRepository, CartRepository cartRepository, ProductRepository productRepository, UserRepository userRepository, AddressRepository addressRepository, OrderMapper orderMapper, ProductService productService, UserInteractionService interactionService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.productRepository = productRepository;
@@ -31,6 +32,7 @@ public class OrderService {
         this.addressRepository = addressRepository;
         this.orderMapper = orderMapper;
         this.productService = productService;
+        this.interactionService = interactionService;
     }
 
     //1. PLACE ORDER
@@ -86,6 +88,9 @@ public class OrderService {
 
             totalOrderPrice += itemSubtotal;
             order.getItems().add(orderItem);
+
+            interactionService.logInteraction(userEmail, product.getId(), "PURCHASE");
+            //pentru fiecare produs, odata ce este pus in comanda, se adauga in tabela user-ului cu interactiuni de cumparare
         }
         //dupa ce trece prin fiecare item
         Order savedOrder = orderRepository.save(order);

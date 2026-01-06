@@ -23,12 +23,14 @@ public class CartService {
     private final UserRepository userRepository;
     private final CartMapper cartMapper;
     private final ProductRepository productRepository;
+    private final UserInteractionService interactionService;
 
-    public CartService(CartRepository cartRepository, UserRepository userRepository, CartMapper cartMapper, ProductRepository productRepository) {
+    public CartService(CartRepository cartRepository, UserRepository userRepository, CartMapper cartMapper, ProductRepository productRepository, UserInteractionService interactionService) {
         this.cartRepository = cartRepository;
         this.userRepository = userRepository;
         this.cartMapper = cartMapper;
         this.productRepository = productRepository;
+        this.interactionService = interactionService;
     }
 
 
@@ -82,8 +84,12 @@ public class CartService {
 
             cart.getItems().add(newItem);
         }
-//        Cart savedCart=cartRepository.save(cart);
-//        return cartMapper.toDto(savedCart);
+
+        interactionService.logInteraction(userEmail, dto.getProductId(), "ADD_TO_CART");
+        //adaugam interactiunea, in tabelul lui
+
+        //Cart savedCart=cartRepository.save(cart);
+        // return cartMapper.toDto(savedCart);
         //echivalent cu
         return cartMapper.toDto(cartRepository.save(cart));
     }

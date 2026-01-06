@@ -97,28 +97,30 @@ public class ProductService {
                 d.getDiscountStartDate().isBefore(now)&&d.getDiscountEndDate().isAfter(now)).findFirst().orElse(null);
     }
 
-    @Scheduled(cron = "0 0 0 * * *")
+    @Scheduled(cron = "0 0 0 * * *") //ora 0 minutul 0 secunda 0, fiecare zi a lunii, fiecare luna din an, fiecare zi a saptamanii
     public void autoManageLotsAndExpirations() {
-        log.info("Rulare algoritm automat de marcare loturi critice...");
+        log.info("Rulare algoritm automat de gestionare loturi si expirari...");
         List<Product> products = productRepository.findAll();
 
         for (Product p : products) {
             if (p.getExpirationDate() != null) {
                 long days = ChronoUnit.DAYS.between(LocalDate.now(), p.getExpirationDate());
 
-                // Daca produsul intra azi in perioada de 7 zile si nu era marcat inainte
+                // 1. MARCARE LOT (daca intra azi in zona de 7 zile)
                 if (days <= 7 && days >= 0 && p.getNearExpiryQuantity() == 0) {
                     p.setNearExpiryQuantity(p.getStockQuantity());
                     productRepository.save(p);
-                    log.warn("LOT CRITIC ACTIVAT: Produsul {} are acum {} unitati la reducere dinamica.",
-                            p.getName(), p.getNearExpiryQuantity());
+                    log.info("LOT CRITIC MARCAT: Produsul {} are {} unitati la pret dinamic.", p.getName(), p.getNearExpiryQuantity());
                 }
 
-                // Stoc -1 daca a expirat
-                if (days < 0 && p.getStockQuantity() > 0) {
-                    p.setStockQuantity(p.getStockQuantity() - 1);
-                    if (p.getNearExpiryQuantity() > 0) p.setNearExpiryQuantity(p.getNearExpiryQuantity() - 1);
+                // 2. ELIMINARE LOT EXPIRAT (Daca data a trecut)
+                // scadem tot ce a ramas din lotul marcat ca nevandut
+                if (days < 0 && p.getNearExpiryQuantity() > 0) {
+                    int expiredQty = p.getNearExpiryQuantity();
+                    p.setStockQuantity(Math.max(0, p.getStockQuantity() - expiredQty));
+                    p.setNearExpiryQuantity(0); // Lotul a fost eliminat
                     productRepository.save(p);
+                    log.warn("ELIMINARE AUTOMATA: {} unitati expirate eliminate pentru {}.", expiredQty, p.getName());
                 }
             }
         }
@@ -141,106 +143,85 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public ProductResponseDTO getProductById(Long id) {
-        return enrichProductDto(productRepository.findById(id).orElseThrow(() -> new RuntimeException("Nu exista produs cu id-ul "+ id)));
+        return productRepository.findById(id)
+                .map(this::enrichProductDto)
+                .orElseThrow(() -> new RuntimeException("Nu exista produs cu id-ul " + id));
     }
 
     //filtrare produse care necesita discount (expira)
     @Transactional(readOnly = true)
-    public List<ProductResponseDTO> getProductsExpiringBefore(LocalDate date)
-    {
-        List<Product> products=productRepository.findByExpirationDateBefore(date);
-        //nu e nevoie de .orelsethrow deoarece va returna o lista goala, e ok, nu e null.
-        return productMapper.toDtoList(products);
+    public List<ProductResponseDTO> getProductsExpiringBefore(LocalDate date) {
+        return productRepository.findByExpirationDateBefore(date).stream()
+                .map(this::enrichProductDto)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<ProductResponseDTO> getProductsByBrandName(String brandName) {
-        List<Product> products = productRepository.findByBrandName(brandName);
-        return productMapper.toDtoList(products);
+        return productRepository.findByBrandName(brandName).stream()
+                .map(this::enrichProductDto)
+                .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
     public List<ProductResponseDTO> getProductsByCategoryName(String categoryName) {
-        List<Product> products = productRepository.findByCategoryName(categoryName);
-        return productMapper.toDtoList(products);
+        return productRepository.findByCategoryName(categoryName).stream()
+                .map(this::enrichProductDto)
+                .collect(Collectors.toList());
     }
 
     // SCRIERE
 
-    public ProductResponseDTO createProduct(ProductCreationDTO creationDTO)
-    {
-        Product productToSave=productMapper.toEntity(creationDTO);
-        //mapeza campurile simple (name,price,stock,...)
+    public ProductResponseDTO createProduct(ProductCreationDTO creationDTO) {
+        Product productToSave = productMapper.toEntity(creationDTO);
+        //mapeaza campurile simple
 
-        // TRATAREA FK -> cautam Brand-ul si categoria produsului, daca nu exita aruncam exceptie.
+
+        //MAPARE CAMPURI COMPLEXE (FK)
         Brand brand = brandRepository.findById(creationDTO.getBrandId())
-                .orElseThrow(() -> new RuntimeException("Brand not found with id: " + creationDTO.getBrandId()));
+                .orElseThrow(() -> new RuntimeException("Brand not found"));
         Category category = categoryRepository.findById(creationDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found with id: " + creationDTO.getCategoryId()));
+                .orElseThrow(() -> new RuntimeException("Category not found"));
 
-        //daca le-a gasit, le setam in produs
         productToSave.setBrand(brand);
         productToSave.setCategory(category);
+        productToSave.setNearExpiryQuantity(0); // Produs nou, nu e marcat ca si cum expira curand
 
-        // Postul efectiv in DB
-        Product savedEntity=productRepository.save(productToSave);
-
-        //returnam entitatea doar cu datele din DTO de raspuns catre controller
-        return productMapper.toDto(savedEntity);
+        return enrichProductDto(productRepository.save(productToSave));
     }
 
     //UPDATE
     public ProductResponseDTO updateProduct(Long id, ProductCreationDTO updateDTO) {
-        Product existingProduct = productRepository.findById(id).orElseThrow(
-                () -> new RuntimeException("Product not found for update with id: " + id)
-        );
-        //actualizam produsul existent, cu datele din DTO primit
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
+
         existingProduct.setName(updateDTO.getName());
         existingProduct.setPrice(updateDTO.getPrice());
         existingProduct.setStockQuantity(updateDTO.getStockQuantity());
         existingProduct.setUnitOfMeasure(updateDTO.getUnitOfMeasure());
-        existingProduct.setExpirationDate(updateDTO.getExpirationDate());
 
-       //actualizam relatiile FK
-
-        //1. BRAND
-        if(!existingProduct.getBrand().getId().equals(updateDTO.getBrandId()))
-        {
-            Brand newBrand = brandRepository.findById(updateDTO.getBrandId())
-                    .orElseThrow(() -> new RuntimeException("Brand not found with id: " + updateDTO.getBrandId()));
-            //cauta noul brand, daca nu il gaseste arunca exceptie
-            //daca il gaseste, ajunge pana aici si il seteaza in produsul existent
-            existingProduct.setBrand(newBrand);
+        //Daca adminul schimba data, se  reseteaza si nearExpiryQuantity
+        if (updateDTO.getExpirationDate() != null && !updateDTO.getExpirationDate().equals(existingProduct.getExpirationDate())) {
+            existingProduct.setExpirationDate(updateDTO.getExpirationDate());
+            existingProduct.setNearExpiryQuantity(0);
         }
 
-        //2. CATEGORIE -> exact acelasi concept ca pt BRAND
-        if (!existingProduct.getCategory().getId().equals(updateDTO.getCategoryId())) {
-            Category newCategory = categoryRepository.findById(updateDTO.getCategoryId())
-                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + updateDTO.getCategoryId()));
-            existingProduct.setCategory(newCategory);
-        }
-        // aici are loc put-ul efectiv
-        Product updatedEntity = productRepository.save(existingProduct);
+        Brand brand = brandRepository.findById(updateDTO.getBrandId()).orElseThrow();
+        Category category = categoryRepository.findById(updateDTO.getCategoryId()).orElseThrow();
+        existingProduct.setBrand(brand);
+        existingProduct.setCategory(category);
 
-        return productMapper.toDto(updatedEntity);
-        //returnam un dto doar cu campurile pt result ca confirmare
+        return enrichProductDto(productRepository.save(existingProduct));
     }
-
-
 
         //DELETE
 
-        public ProductResponseDTO deleteProduct(Long id)
-        {
-            Product p=productRepository.findById(id).orElseThrow(
-                    () -> new RuntimeException("Product not found with id: "+ id)
-            );
-            //aici are loc DELETE-UL efectiv
-            productRepository.delete(p);
-            return productMapper.toDto(p);
-            //returnam entitatea stearsa ca confirmare ca dto
-
-        }
+    public ProductResponseDTO deleteProduct(Long id) {
+        Product p = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+        productRepository.delete(p);
+        return productMapper.toDto(p); // La delete nu mai e nevoie de enrichment
+    }
     }
 
 
