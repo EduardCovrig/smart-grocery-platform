@@ -23,8 +23,9 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final ProductService productService;
     private final UserInteractionService interactionService;
+    public final NotificationService notificationService;
 
-    public OrderService(OrderRepository orderRepository, CartRepository cartRepository, ProductRepository productRepository, UserRepository userRepository, AddressRepository addressRepository, OrderMapper orderMapper, ProductService productService, UserInteractionService interactionService) {
+    public OrderService(OrderRepository orderRepository, CartRepository cartRepository, ProductRepository productRepository, UserRepository userRepository, AddressRepository addressRepository, OrderMapper orderMapper, ProductService productService, UserInteractionService interactionService, NotificationService notificationService) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
         this.productRepository = productRepository;
@@ -33,6 +34,7 @@ public class OrderService {
         this.orderMapper = orderMapper;
         this.productService = productService;
         this.interactionService = interactionService;
+        this.notificationService = notificationService;
     }
 
     //1. PLACE ORDER
@@ -57,7 +59,7 @@ public class OrderService {
         //setare date comanda
         order.setUser(user);
         order.setCreatedAt(Instant.now());
-        order.setStatus("PLACED");
+        order.setStatus("CONFIRMED");
 
         //adaugam produsele din cos in comanda
         order.setItems(new ArrayList<>());
@@ -93,11 +95,28 @@ public class OrderService {
             //pentru fiecare produs, odata ce este pus in comanda, se adauga in tabela user-ului cu interactiuni de cumparare
         }
         //dupa ce trece prin fiecare item
+
+
+        //AICI SE ADAUGA PROMO CODEURI
+
+        if (orderDTO.getPromoCode() != null && !orderDTO.getPromoCode().isBlank()) {
+            String code = orderDTO.getPromoCode().toUpperCase().trim();
+            // Exemplu: "LICENTA10" 10% reducere
+            if (code.equals("LICENTA10")) {
+                totalOrderPrice = totalOrderPrice * 0.90; // Scade 10%
+                order.setPromoCode(code);
+            }
+
+            // Daca codul e invalid il ignoram
+        }
+
         order.setTotalPrice(totalOrderPrice);
         Order savedOrder = orderRepository.save(order);
         //salvam comanda in baza de date, savedOrder va avea si id-ul din baza de date preluat
         cart.getItems().clear();
         cartRepository.save(cart); //golim cosul
+        // Aici ar veni notificarea pe email (Momentan doar comentariu)
+        notificationService.sendOrderConfirmation(user.getEmail(), savedOrder);
         return orderMapper.toDto(savedOrder); //returnam json cu OrderDto.
     }
 
@@ -105,14 +124,18 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<OrderResponseDTO> getUserOrders(String userEmail) {
         User user = userRepository.findByEmail(userEmail).orElseThrow();
-        List<Order> orders = orderRepository.findAllByUserId(user.getId());
-        return orderMapper.toDtoList(orders);
+        return orderMapper.toDtoList(orderRepository.findAllByUserId(user.getId()));
     }
 
     @Transactional(readOnly = true)
-    public OrderResponseDTO getOrderById(Long id, String email) {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Comanda nu a fost gasita."));
-        if (!order.getUser().getEmail().equals(email)) throw new RuntimeException("Nu aveti acces la aceasta comanda.");
+    public OrderResponseDTO getOrderById(Long id, String userEmail) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Comanda cu ID-ul " + id + " nu a fost gasita."));
+
+        // OWNERSHIP CHECK
+        if (!order.getUser().getEmail().equals(userEmail)) {
+            throw new RuntimeException("Nu ai dreptul sa vizualizezi aceasta comanda.");
+        }
         return orderMapper.toDto(order);
     }
 

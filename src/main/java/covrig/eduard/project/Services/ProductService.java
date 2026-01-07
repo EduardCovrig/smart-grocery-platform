@@ -1,9 +1,6 @@
 package covrig.eduard.project.Services;
 
-import covrig.eduard.project.Models.Brand;
-import covrig.eduard.project.Models.Category;
-import covrig.eduard.project.Models.Discount;
-import covrig.eduard.project.Models.Product;
+import covrig.eduard.project.Models.*;
 import covrig.eduard.project.Repositories.BrandRepository;
 import covrig.eduard.project.Repositories.CategoryRepository;
 import covrig.eduard.project.Repositories.ProductRepository;
@@ -145,7 +142,7 @@ public class ProductService {
     public ProductResponseDTO getProductById(Long id) {
         return productRepository.findById(id)
                 .map(this::enrichProductDto)
-                .orElseThrow(() -> new RuntimeException("Nu exista produs cu id-ul " + id));
+                .orElseThrow(() -> new RuntimeException("Produsul cu ID-ul " + id + " nu a fost gasit."));
     }
 
     //filtrare produse care necesita discount (expira)
@@ -179,13 +176,36 @@ public class ProductService {
 
         //MAPARE CAMPURI COMPLEXE (FK)
         Brand brand = brandRepository.findById(creationDTO.getBrandId())
-                .orElseThrow(() -> new RuntimeException("Brand not found"));
+                .orElseThrow(() -> new RuntimeException("Brand-ul cu ID-ul " + creationDTO.getBrandId() + " nu a fost gasit."));
         Category category = categoryRepository.findById(creationDTO.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("Category not found"));
+                .orElseThrow(() -> new RuntimeException("Categoria cu ID-ul " + creationDTO.getCategoryId() + " nu a fost gasita."));
 
         productToSave.setBrand(brand);
         productToSave.setCategory(category);
         productToSave.setNearExpiryQuantity(0); // Produs nou, nu e marcat ca si cum expira curand
+
+        if (creationDTO.getImageUrls() != null) { //seteaza imaginile
+            List<ProductImage> images = new java.util.ArrayList<>();
+            for (String url : creationDTO.getImageUrls()) {
+                ProductImage img = new ProductImage();
+                img.setImageUrl(url);
+                img.setProduct(productToSave); // setam si legatura inversa pentru imagine -> product
+                images.add(img);
+            }
+            productToSave.setImages(images);
+        }
+
+        if (creationDTO.getAttributes() != null) { //gestionare atribute (valori nutritionale, etc)
+            List<covrig.eduard.project.Models.ProductAttribute> attrs = new java.util.ArrayList<>();
+            creationDTO.getAttributes().forEach((key, value) -> {
+                covrig.eduard.project.Models.ProductAttribute attr = new covrig.eduard.project.Models.ProductAttribute();
+                attr.setName(key);
+                attr.setValue(value);
+                attr.setProduct(productToSave); // setam si legatura inversa pentru atribut -> product
+                attrs.add(attr);
+            });
+            productToSave.setAttributes(attrs);
+        }
 
         return enrichProductDto(productRepository.save(productToSave));
     }
@@ -193,7 +213,7 @@ public class ProductService {
     //UPDATE
     public ProductResponseDTO updateProduct(Long id, ProductCreationDTO updateDTO) {
         Product existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
+                .orElseThrow(() -> new RuntimeException("Produsul cu ID-ul " + id + " nu a fost gasit pentru actualizare."));
 
         existingProduct.setName(updateDTO.getName());
         existingProduct.setPrice(updateDTO.getPrice());
@@ -206,8 +226,11 @@ public class ProductService {
             existingProduct.setNearExpiryQuantity(0);
         }
 
-        Brand brand = brandRepository.findById(updateDTO.getBrandId()).orElseThrow();
-        Category category = categoryRepository.findById(updateDTO.getCategoryId()).orElseThrow();
+        Brand brand = brandRepository.findById(updateDTO.getBrandId())
+                .orElseThrow(() -> new RuntimeException("Brand-ul cu ID-ul " + updateDTO.getBrandId() + " nu a fost gasit."));
+        Category category = categoryRepository.findById(updateDTO.getCategoryId())
+                .orElseThrow(() -> new RuntimeException("Categoria cu ID-ul " + updateDTO.getCategoryId() + " nu a fost gasita."));
+
         existingProduct.setBrand(brand);
         existingProduct.setCategory(category);
 
@@ -218,9 +241,9 @@ public class ProductService {
 
     public ProductResponseDTO deleteProduct(Long id) {
         Product p = productRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Product not found"));
+                .orElseThrow(() -> new RuntimeException("Produsul cu ID-ul " + id + " nu a fost gasit pentru stergere."));
         productRepository.delete(p);
-        return productMapper.toDto(p); // La delete nu mai e nevoie de enrichment
+        return productMapper.toDto(p);
     }
     }
 
