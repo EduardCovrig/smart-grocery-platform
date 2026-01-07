@@ -93,6 +93,7 @@ public class OrderService {
             //pentru fiecare produs, odata ce este pus in comanda, se adauga in tabela user-ului cu interactiuni de cumparare
         }
         //dupa ce trece prin fiecare item
+        order.setTotalPrice(totalOrderPrice);
         Order savedOrder = orderRepository.save(order);
         //salvam comanda in baza de date, savedOrder va avea si id-ul din baza de date preluat
         cart.getItems().clear();
@@ -106,6 +107,13 @@ public class OrderService {
         User user = userRepository.findByEmail(userEmail).orElseThrow();
         List<Order> orders = orderRepository.findAllByUserId(user.getId());
         return orderMapper.toDtoList(orders);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponseDTO getOrderById(Long id, String email) {
+        Order order = orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Comanda nu a fost gasita."));
+        if (!order.getUser().getEmail().equals(email)) throw new RuntimeException("Nu aveti acces la aceasta comanda.");
+        return orderMapper.toDto(order);
     }
 
 }

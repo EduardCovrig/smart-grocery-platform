@@ -33,10 +33,12 @@ public class AddressService {
         return addressMapper.toDtoList(addressRepository.findAllByUserId(user.getId()));
     }
     @Transactional(readOnly=true)
-    public AddressResponseDTO getAddressById(Long id)
+    public AddressResponseDTO getAddressById(Long id, String email)
     {
-        Address address=addressRepository.findById(id).orElseThrow(() ->
-                new RuntimeException("Utilizatorul cu id-ul "+ id + " nu are adrese salvate."));
+        Address address = addressRepository.findById(id).orElseThrow(() -> new RuntimeException("Adresa nu a fost gasita."));
+        if (!address.getUser().getEmail().equals(email)) {
+            throw new RuntimeException("Nu aveti permisiunea de a vedea aceasta adresa.");
+        }
         return addressMapper.toDto(address);
     }
 
