@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -27,4 +29,7 @@ public class ProductResponseDTO {
     private Double discountValue;      // Valoarea discountului calculat
     private String discountType;       // Tipul (PERCENT, FIXED sau DYNAMIC_AUTO)
     private Boolean hasActiveDiscount; // Flag pentru afisare badge-uri în frontend
+
+    private List<String> imageUrls;       // Ex: "/images/mar.jpg"
+    private Map<String, String> attributes; // Ex: {"Calorii": "50"}
 }

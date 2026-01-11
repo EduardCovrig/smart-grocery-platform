@@ -62,7 +62,7 @@ public class OrderService {
         order.setStatus("CONFIRMED");
         try {
             if (orderDTO.getPaymentMethod() != null) {
-                // Convertim string-ul din DTO ("CARD") în Enum (PaymentMethod.CARD)
+                // Convertim string-ul din DTO ("CARD") in Enum (PaymentMethod.CARD)
                 order.setPaymentMethod(PaymentMethod.valueOf(orderDTO.getPaymentMethod().toUpperCase()));
             } else {
                 order.setPaymentMethod(PaymentMethod.CASH);
