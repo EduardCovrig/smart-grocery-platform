@@ -43,4 +43,12 @@ public class OrderController {
         // Verificarea de securitate are loc in service
         return ResponseEntity.ok(orderService.getOrderById(id, authentication.getName()));
     }
+
+    @PutMapping("/{id}/status")
+    public ResponseEntity<OrderResponseDTO> updateStatus(
+            @PathVariable Long id,
+            @RequestBody String newStatus
+    ) {
+        return ResponseEntity.ok(orderService.updateOrderStatus(id, newStatus.replace("\"", "")));
+    }
 }

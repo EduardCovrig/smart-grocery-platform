@@ -225,6 +225,9 @@ public class ProductService {
             existingProduct.setExpirationDate(updateDTO.getExpirationDate());
             existingProduct.setNearExpiryQuantity(0);
         }
+        if (updateDTO.getStockQuantity() < existingProduct.getNearExpiryQuantity()) {
+            existingProduct.setNearExpiryQuantity(updateDTO.getStockQuantity());
+        }
 
         Brand brand = brandRepository.findById(updateDTO.getBrandId())
                 .orElseThrow(() -> new RuntimeException("Brand-ul cu ID-ul " + updateDTO.getBrandId() + " nu a fost gasit."));
@@ -233,6 +236,7 @@ public class ProductService {
 
         existingProduct.setBrand(brand);
         existingProduct.setCategory(category);
+
 
         return enrichProductDto(productRepository.save(existingProduct));
     }

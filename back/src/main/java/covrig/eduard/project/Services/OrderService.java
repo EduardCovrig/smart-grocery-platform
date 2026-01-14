@@ -148,5 +148,12 @@ public class OrderService {
         }
         return orderMapper.toDto(order);
     }
+    public OrderResponseDTO updateOrderStatus(Long orderId, String newStatus) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Comanda nu a fost gasita."));
+
+        order.setStatus(newStatus.toUpperCase());
+        return orderMapper.toDto(orderRepository.save(order));
+    }
 
 }
