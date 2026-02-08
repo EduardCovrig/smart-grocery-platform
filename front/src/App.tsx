@@ -1,10 +1,20 @@
+import Home from "./pages/Home"
+import Login from "./pages/Login"
+import Register from "./pages/Register"
+import Cart from "./pages/Cart"
+import { BrowserRouter, Routes, Route } from "react-router-dom"
 function App() {
   return (
-    <div className="min-h-screen bg-background font-sans antialiased">
-      {/* Aici va veni Router-ul (Harta site-ului) */}
-      <h1 className="text-2xl p-5 font-bold">EdwC Store - Ready to build</h1>
-    </div>
+    <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Home/>}/>
+      <Route path="/login" element={<Login/>}/>
+      <Route path="/register" element={<Register/>}/>
+      <Route path="/cart" element={<Cart/>}/>
+
+    </Routes>
+    </BrowserRouter>
   )
 }
 
-export default App
+export default App  
