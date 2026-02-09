@@ -181,9 +181,10 @@ export default function Register() {
                         )}
                     </div>
                     {serverError && (
-                        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md flex items-center text-sm">
-                            <AlertCircle className="w-4 h-4 mr-2" />
-                            <span>{serverError}</span>
+                        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md flex flex-col items-center justify-center text-center gap-2">
+                            {/* Iconita mai mare putin si pusa sus */}
+                            <AlertCircle className="w-6 h-6" />
+                            <span className="text-sm font-medium">{serverError}</span>
                         </div>
                     )}
 

@@ -70,7 +70,12 @@ public class UserService {
     {
         //validare date
         if(userRepository.existsByEmail(userRegistrationDTO.getEmail()))
-            throw new RuntimeException("Exista deja un cont cu adresa de email " + userRegistrationDTO.getEmail() + " inregistrat.");
+            throw new RuntimeException("There is an account already registered with this email. Try logging in instead!");
+        if (userRegistrationDTO.getPhoneNumber() != null && !userRegistrationDTO.getPhoneNumber().isBlank()) {
+            if (userRepository.existsByPhoneNumber(userRegistrationDTO.getPhoneNumber())) {
+                throw new RuntimeException("This phone number is already used. Try logging in instead!");
+            }
+        }
         User userToCreate=userMapper.toEntity(userRegistrationDTO); //aici e id e null
         userToCreate.setPasswordHash(passwordEncoder.encode(userRegistrationDTO.getPassword()));
         userToCreate.setRole(Role.USER);
