@@ -39,12 +39,11 @@ export default function Login() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 pb-60">
             <Card className="w-full max-w-lg shadow-blue-300 shadow-md relative p-8">
-                <Link to="/" className="absolute top-4 right-4 text-gray-400 hover:bg-gray-200 hover:text-gray-900 transition">
+                <Link to="/" className="absolute top-4 right-4 text-gray-400 hover:bg-gray-200 hover:text-gray-900 transition rounded-full p-2">
                     <X size={28} />
                 </Link>
                 <CardHeader className="space-y-1 text-center">
-                    <CardTitle className="text-3xl font-bold "> Welcome back!
-                    </CardTitle>
+                    <CardTitle className="text-3xl font-bold "> Welcome back!</CardTitle>
                     <CardDescription>Please enter your credentials to access your account.</CardDescription>
                 </CardHeader>
                 <CardContent>
