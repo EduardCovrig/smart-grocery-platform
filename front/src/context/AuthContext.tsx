@@ -3,7 +3,9 @@ import { jwtDecode } from "jwt-decode";
 
 // ce are un utilizator
 interface User {
-    email: string;
+    sub: string; // sub e emailul, subject (standard JWT)
+    firstName: string;
+    lastName: string;
     role: string;
     exp: number; // data expirarii token-ului
 }
@@ -63,7 +65,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);                    // Stergem datele userului
     };
 
-    const isAuthenticated = !!user; // true daca user != null
+    const isAuthenticated = !!user; // true daca user != null (!(!user)) -> inverseaza rezultatul rezultatului
+    //user==null => !user=true => !(true)=false
 
     return (
         <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated }}>

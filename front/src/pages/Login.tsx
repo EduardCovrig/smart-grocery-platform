@@ -9,7 +9,7 @@ import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 
 export default function Login() {
-    const [email, setEmail] = useState("");
+    const [email, setEmail] = useState(""); //useState<string>("")
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false)
     const isValid = email.trim().length > 0 && password.trim().length > 0; // trim elimina space-urile de la inceput si sfarsit.

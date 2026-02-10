@@ -4,20 +4,25 @@ import Register from "./pages/Register"
 import Cart from "./pages/Cart"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Navbar from "./components/Navbar"
+import { ProtectedRoute } from "./components/ProtectedRoute"
 function App() {
   return (
     <BrowserRouter>
-    <Navbar/>
-    
-    <Routes>
-      <Route path="/" element={<Home/>}/>
-      <Route path="/login" element={<Login/>}/>
-      <Route path="/register" element={<Register/>}/>
-      <Route path="/cart" element={<Cart/>}/>
+      <Navbar />
 
-    </Routes>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/cart" element={
+          <ProtectedRoute>
+            <Cart />
+          </ProtectedRoute>} />
+
+      </Routes>
+       {/* path="*" -> "Orice altceva, to do later ruta de catch all" */}
     </BrowserRouter>
-  )
+        )
 }
 
 export default App  
