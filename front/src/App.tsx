@@ -3,7 +3,7 @@ import Login from "./pages/Login"
 import Register from "./pages/Register"
 import Cart from "./pages/Cart"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
-import Navbar from "./components/navbar"
+import Navbar from "./components/Navbar"
 function App() {
   return (
     <BrowserRouter>

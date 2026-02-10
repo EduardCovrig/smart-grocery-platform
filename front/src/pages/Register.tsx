@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, X, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Register() {
     const [firstName, setFirstName] = useState("");
@@ -24,6 +25,7 @@ export default function Register() {
 
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+    const {login}=useAuth();
 
     //reguli de validare
     const isEmailValid = email.includes("@"); //sa aibe @ in el
@@ -64,8 +66,9 @@ export default function Register() {
                 email: email,
                 password: password
             });
-            console.log("Auto-login reusit! Token:", loginResponse.data);
-            //aici se va salva tokenul ulterior.
+            // console.log("Auto-login reusit! Token:", loginResponse.data);
+            // a fost inlocuit console.log-ul cu functia de login efectiva.
+            login(loginResponse.data.token);
             navigate("/");
         }
         catch (error: any) {
@@ -182,7 +185,6 @@ export default function Register() {
                     </div>
                     {serverError && (
                         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md flex flex-col items-center justify-center text-center gap-2">
-                            {/* Iconita mai mare putin si pusa sus */}
                             <AlertCircle className="w-6 h-6" />
                             <span className="text-sm font-medium">{serverError}</span>
                         </div>

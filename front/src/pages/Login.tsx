@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, X } from "lucide-react";
 import { useState } from "react"
 import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Login() {
     const [email, setEmail] = useState("");
@@ -13,6 +14,7 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false)
     const isValid = email.trim().length > 0 && password.trim().length > 0; // trim elimina space-urile de la inceput si sfarsit.
     const navigate = useNavigate();
+    const {login}=useAuth();
 
     const handleLogin = async (e: React.SyntheticEvent) => {
         e.preventDefault();
@@ -24,12 +26,13 @@ export default function Login() {
                     email: email,
                     password: password
                 });
-            console.log("Raspuns de la server:", response.data);
-            // salvam tokenul ulterior
+            //console.log("Raspuns de la server:", response.data);
+            // a fost inlocuit console.log-ul cu functia de login efectiva.
+            login(response.data.token); // Contextul preia controlul, salveaza in localStorage, decodeaza userul
             navigate("/");
         }
         catch (error: any) {
-            console.error("Eroare la login:", error);
+            console.error("Error logging in:", error);
         }
         finally {
             setIsLoading(false);
