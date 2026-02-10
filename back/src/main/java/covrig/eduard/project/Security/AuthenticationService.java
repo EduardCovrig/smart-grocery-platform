@@ -13,6 +13,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import javax.management.Notification;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 public class AuthenticationService {
@@ -39,8 +41,13 @@ public class AuthenticationService {
         //realistic, nu os a intre niciodata pe orelsethrow ca nu are de ce, user-ul abia fiind creat, deci nu are rost
         //sa punem o exceptie custom, totusi, daca chiar intra, va fi prinsa de runtimeexception si va returna ceva generic
         //dar nu se va intampla abasolut niciodat asta.
-        var jwtToken = jwtService.generateToken(user); //ii generam token jwt
         notificationService.sendWelcomeEmail(req.getEmail());
+
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("firstName", user.getFirstName());
+        extraClaims.put("lastName", user.getLastName());
+        extraClaims.put("role", user.getRole().name());
+        var jwtToken = jwtService.generateToken(extraClaims, user); //ii generam token jwt cu extra date in el
 
         return new AuthenticationResponse(jwtToken); //returnam tokenul.
     }
@@ -61,7 +68,11 @@ public class AuthenticationService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found")); //mi-l cauta im baza de date
         //daca nu il gaseste, arunca exceptie
 
-        var jwtToken = jwtService.generateToken(user); //ii generam un token
+        Map<String, Object> extraClaims = new HashMap<>();
+        extraClaims.put("firstName", user.getFirstName());
+        extraClaims.put("lastName", user.getLastName());
+        extraClaims.put("role", user.getRole().name());
+        var jwtToken = jwtService.generateToken(extraClaims, user); //ii generam tokenul cu date suplimentare in el
 
         return new AuthenticationResponse(jwtToken); //il returnam, nu il stocam nicaieri
         //mai departe, e treaba frontend-ului sa il gestioneze pentru vitioarele cereri
