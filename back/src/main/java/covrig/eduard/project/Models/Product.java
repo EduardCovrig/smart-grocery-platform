@@ -37,9 +37,12 @@ public class Product {
     @Column(name = "near_expiry_quantity", nullable = false)
     private Integer nearExpiryQuantity = 0;
 
-    // Unitatea de măsura (ex: 'kg', 'buc')
+    // Unitatea de masura (ex: 'kg', 'buc')
     @Column(name = "unit_of_measure", nullable = false)
     private String unitOfMeasure;
+
+    @Column(name = "description", length = 1000)
+    private String description;
 
     // Relatii
     @ManyToOne(fetch = FetchType.LAZY) //brand_id e foreign key catre primary key din alta tabela

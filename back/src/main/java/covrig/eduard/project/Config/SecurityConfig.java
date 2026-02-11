@@ -35,9 +35,11 @@ public class SecurityConfig {
                         .requestMatchers("/images/**").permitAll()
 
                         // 2. Doar ADMIN (Modificare Catalog)
-                        .requestMatchers(HttpMethod.POST, "/api/products/**", "/api/brands/**", "/api/categories/**").hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/products/**", "/api/brands/**", "/api/categories/**").hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/products/**", "/api/brands/**", "/api/categories/**").hasAuthority("ADMIN")
+                        // MODIFICAT TEMPORAR CA SA FACEM IN POSTMAN NISTE CHESTII
+                        // DE TINUT MINTE SA MODIFIC INAPOI IN HAS AUTHORTIY
+                        .requestMatchers(HttpMethod.POST, "/api/products/**", "/api/brands/**", "/api/categories/**")/*.hasAuthority("ADMIN")*/.permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**", "/api/brands/**", "/api/categories/**")/*.hasAuthority("ADMIN")*/.permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**", "/api/brands/**", "/api/categories/**")/*.hasAuthority("ADMIN")*/.permitAll()
 
                         // Gestionare Status Comenzi (Admin)
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/status").hasAuthority("ADMIN")

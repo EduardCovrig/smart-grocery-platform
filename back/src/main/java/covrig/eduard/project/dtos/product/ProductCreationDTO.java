@@ -22,6 +22,8 @@ public class ProductCreationDTO {
     // SE FOLOSESTE DE OBICEI LA STRINGURI
     private String name;
 
+    private String description;
+
 
     // 2. Campuri necesare pentru pret si stoc
 

@@ -16,6 +16,7 @@ public class ProductResponseDTO {
     // DEOARECE DATELE VIN DEJA DIRECT DIN BAZA DE DATE
     private Long id;
     private String name;
+    private String description;
 
     private Double price; //pretul de baza
     private Integer stockQuantity;
