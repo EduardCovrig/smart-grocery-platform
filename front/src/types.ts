@@ -1,4 +1,4 @@
-export default interface Product
+export interface Product
 // campurile care apas in ProductResponseDTO in backend
 {
     id: number

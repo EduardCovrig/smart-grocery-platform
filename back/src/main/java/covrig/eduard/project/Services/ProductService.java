@@ -124,13 +124,49 @@ public class ProductService {
     }
     private ProductResponseDTO enrichProductDto(Product p) {
         ProductResponseDTO dto = productMapper.toDto(p);
-        // Pretul afisat va fi cel mai mic disponibil
-        Double currentPrice = getDiscountedPriceOnly(p);
-        dto.setCurrentPrice(currentPrice);
-        dto.setHasActiveDiscount(currentPrice < p.getPrice() && p.getNearExpiryQuantity() > 0);
+
+        // 1. Calculam pretul bazat pe EXPIRARE (Smart Logic)
+        Double expiryPrice = getDiscountedPriceOnly(p);
+        boolean hasExpiryDiscount = expiryPrice < p.getPrice();
+
+        // 2. Calculam pretul bazat pe REDUCERE MANUALA (Table Discount)
+        Discount activeDiscount = findActiveDiscount(p);
+        Double manualDiscountPrice = p.getPrice();
+        boolean hasManualDiscount = false;
+
+        if (activeDiscount != null) {
+            manualDiscountPrice = applyDiscount(p.getPrice(), activeDiscount.getDiscountValue(), activeDiscount.getDiscountType());
+            hasManualDiscount = true;
+        }
+
+        // 3. LOGICA "BEST PRICE" (Cel mai mic pret castiga)
+        if (hasExpiryDiscount && expiryPrice <= manualDiscountPrice) {
+            // CAZ A: Expirarea ofera cel mai bun pret (sau e singura reducere)
+            dto.setCurrentPrice(expiryPrice);
+            dto.setHasActiveDiscount(true);
+            dto.setDiscountType("PERCENT"); // Expirarea e mereu procentuala
+
+            // Calculam procentul invers pentru a-l afisa corect pe Frontend
+            // Formula: ((PretVechi - PretNou) / PretVechi) * 100
+            double percent = ((p.getPrice() - expiryPrice) / p.getPrice()) * 100;
+            dto.setDiscountValue(Math.round(percent * 100.0) / 100.0); // Rotunjire 2 zecimale
+
+        } else if (hasManualDiscount) {
+            // CAZ B: Reducerea Manuala este mai buna (sau e singura)
+            dto.setCurrentPrice(manualDiscountPrice);
+            dto.setHasActiveDiscount(true);
+            dto.setDiscountValue(activeDiscount.getDiscountValue());
+            dto.setDiscountType(activeDiscount.getDiscountType());
+
+        } else {
+            // CAZ C: Nicio reducere
+            dto.setCurrentPrice(p.getPrice());
+            dto.setHasActiveDiscount(false);
+            dto.setDiscountValue(0.0);
+        }
+
         return dto;
     }
-
 
     //1. CITIRE
     @Transactional(readOnly = true)

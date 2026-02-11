@@ -76,4 +76,6 @@ public class Product {
     // 6. Order Items
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems;
+
+
 }

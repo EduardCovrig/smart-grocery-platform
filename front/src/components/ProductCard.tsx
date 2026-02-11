@@ -1,59 +1,77 @@
-import Product from "@/types";
-import {Link} from "react-router-dom";
-import {ShoppingCart} from "lucide-react";
-import {Button} from "./ui/button"
+import { Product } from "@/types";
+import { Link } from "react-router-dom";
+import { ShoppingBasket } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface ProductCardProps {
     product: Product;
 }
 
-export default function ProductCard({product}: ProductCardProps)
-{
-    const imageToDisplay=product.imageUrls&& product.imageUrls.length>0 ?
-        product.imageUrls[0] : "https://placehold.co/400?text=No+Image";
+export default function ProductCard({ product }: ProductCardProps) {
+    const imageToDisplay = product.imageUrls?.[0] || "https://placehold.co/400?text=No+Image";
+
+    const discountPercentage = product.hasActiveDiscount
+        ? Math.round(((product.price - product.currentPrice) / product.price) * 100)
+        : 0;
+
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
 
     return (
-        <div className="border rounded-xl p-4 shadow-sm hover:shadow-md transition bg-white flex flex-col h-full">
-            <Link to={`/product/${product.id}`} className="h-48 flex items-center justify-center bg-gray-50 rounded-lg mb-4 overflow-hidden relative">
-            {/* overflow hidden ca sa nu depaseasca colturile rontunjite */}
-               <img src={imageToDisplay} alt={product.name} className="object-contain h-full w-full hover: scale-105 transition-transform duration-300"/>
-            </Link>
-            {product.hasActiveDiscount && (
-                    <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-                        SALE
-                    </span>
+        <Link 
+            to={`/product/${product.id}`}
+            className="group flex flex-col h-full bg-white rounded-2xl transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-black/5 overflow-hidden relative border border-transparent"
+        >
+            {/* ZONA IMAGINE */}
+            <div className="relative h-52 w-full p-4 flex items-center justify-center">
+                {product.hasActiveDiscount && discountPercentage > 0 && (
+                    <div className="absolute top-0 left-0 bg-[#e10d0d] text-white text-sm font-black px-4 py-2 rounded-br-2xl z-10">
+                        -{discountPercentage}%
+                    </div>
                 )}
+                <img 
+                    src={imageToDisplay} 
+                    alt={product.name} 
+                    className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" 
+                />
+            </div>
 
-            {/* Zona Informatii */}
-            <div className="flex flex-col flex-grow">
-                    <span className="text-xs text-gray-500 uppercase font-semibold">{product.brandName}</span> {/* daca puneam fara {}, scria efectiv textul product.brandName */}
-                    {/* uppercase e mai rapid decat .toUpperCase() pe variabila, deoarece nu face nicio schimbare interna, doar afiseaza diferit pe site*/}
-                <h3 className="font-bold text-lg text-gray-800 leading-tight mb-2 line-clamp-2"> {/* line-clamp-2 -> daca textul e mai lung de 2 randuri, pune ... in continuare */}
+            {/* ZONA INFO */}
+            <div className="flex flex-col flex-grow p-4 pt-2">
+                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
+                    {product.brandName}
+                </div>
+
+                <h3 className="text-lg font-extrabold text-gray-900 leading-tight line-clamp-2 mb-4 group-hover:text-green-700">
                     {product.name}
                 </h3>
-                <p className="text-sm text-gray-500 line-clamp-2 mb-4 flex-grow">
-                    {product.description}
-                </p>
 
-                <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                    <div className="flex flex-col">
-                        {/* Pretul vechi (taiat) - apare doar daca e reducere */}
-                        {product.hasActiveDiscount && (
-                            <span className="text-xs text-gray-400 line-through">
-                                {product.price} RON
-                            </span>
-                        )}
-                        {/* Pretul curent (mare) */}
-                        <span className="text-xl font-bold text-blue-600">
-                            {product.currentPrice} RON
-                        </span>
+                {/* ZONA PRET */}
+                <div className="mt-auto">
+                    {product.hasActiveDiscount && (
+                        <div className="text-sm text-gray-400 line-through font-medium mb-1">
+                            {product.price.toFixed(2)} Lei
+                        </div>
+                    )}
+                    <div className={`text-3xl font-black leading-none tracking-tighter ${product.hasActiveDiscount ? "text-[#e10d0d]" : "text-gray-900"}`}>
+                        {product.currentPrice.toFixed(2)}
+                        <span className="text-base font-bold ml-1 uppercase">Lei</span>
                     </div>
+                </div>
 
-                    <Button size="icon" className="rounded-full bg-blue-600 hover:bg-blue-700">
-                        <ShoppingCart size={18} className="text-white" />
+                {/* BUTON ADAUGARE */}
+                <div className="mt-6">
+                    <Button 
+                        onClick={handleAddToCart}
+                        className="w-full h-12 rounded-xl bg-[#eef7ee] text-[#0d7a0d] hover:bg-[#0d7a0d] hover:text-white font-black text-base transition-all duration-300 flex items-center justify-center gap-3 shadow-none border-none"
+                    >
+                        <ShoppingBasket size={22} strokeWidth={2.5} />
+                        Add to cart
                     </Button>
                 </div>
             </div>
-        </div>
-    )
+        </Link>
+    );
 }
