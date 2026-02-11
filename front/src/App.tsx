@@ -5,6 +5,7 @@ import Cart from "./pages/Cart"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Navbar from "./components/Navbar"
 import { ProtectedRoute } from "./components/ProtectedRoute"
+import NotFound from "./pages/NotFound"
 function App() {
   return (
     <BrowserRouter>
@@ -19,8 +20,9 @@ function App() {
             <Cart />
           </ProtectedRoute>} />
 
+       {/* path="*" -> "Orice altceva, to do later ruta de catch all" - DONE */}
+      <Route path='*' element={<NotFound/>}/>
       </Routes>
-       {/* path="*" -> "Orice altceva, to do later ruta de catch all" */}
     </BrowserRouter>
         )
 }
