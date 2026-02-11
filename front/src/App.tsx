@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import Navbar from "./components/Navbar"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import NotFound from "./pages/NotFound"
+import ProductDetails from "./pages/ProductDetails"
+
 function App() {
   return (
     <BrowserRouter>
@@ -15,6 +17,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/product/:id" element={<ProductDetails/>}/>
         <Route path="/cart" element={
           <ProtectedRoute>
             <Cart />
