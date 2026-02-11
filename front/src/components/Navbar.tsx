@@ -1,12 +1,28 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { ShoppingCart, User, Search, LogOut } from "lucide-react" //iconitele
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
+import {useState,useEffect} from "react"
 import { Button } from "./ui/button";
 
 export default function Navbar() {
     const location = useLocation(); //pentru a afla pe ce pagina suntem acum.
     const navigate = useNavigate();
     const { user, logout, isAuthenticated } = useAuth();
+    const { cartCount } = useCart();
+    const [isBumping, setIsBumping] = useState(false); //state animatie bulina rosie cart
+    useEffect(() => {
+        if (cartCount === 0) return; // Nu animam la incarcarea initiala daca e 0
+
+        setIsBumping(true); // 1. Pornim animatia
+
+        // 2. stop dupa 0.3s
+        const timer = setTimeout(() => {
+            setIsBumping(false);
+        }, 400);
+
+        return () => clearTimeout(timer); 
+    }, [cartCount]);
 
     // --- LOGICA DE AFISARE NUME ---
     const firstName = user?.firstName || "";
@@ -73,7 +89,12 @@ export default function Navbar() {
                 {/* Buton Cos */}
                 <Link to="/cart" className="relative bg-blue-50 p-2 text-blue-600 rounded-full hover:bg-blue-100 transition">
                     <ShoppingCart size={20} />
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">0</span>
+                   {cartCount > 0 && (
+                     <span className={`absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 flex 
+                     items-center justify-center rounded-full transition-transform duration-200 ease-in-out ${isBumping ? "scale-150" : "scale-100"}`}>
+                        {cartCount}
+                    </span>
+                   )}
                 </Link>
 
             </div>
