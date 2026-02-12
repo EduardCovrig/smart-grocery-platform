@@ -69,7 +69,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 <div className="mt-6">
                     <Button 
                         onClick={handleAddToCart}
-                        className="w-full h-12 rounded-xl bg-[#134c9c] text-white hover:bg-[#80c4e8] hover:text-[#134c9c] font-black text-base transition-all duration-300 flex items-center justify-center gap-3 shadow-none border-none"
+                        className="w-full h-12 rounded-xl bg-[#134c9c] text-white hover:bg-[#80c4e8] hover:text-gray-800 font-black text-base transition-all duration-300 flex items-center justify-center gap-3 shadow-none border-none"
                     >
                         <ShoppingBasket size={22} strokeWidth={2.5} />
                         Add to cart

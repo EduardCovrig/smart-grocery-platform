@@ -34,9 +34,9 @@ export default function Home() {
 
     }
     if (error) return (
-        <div className="min-h-96 flex flex-col items-center justify-center text-red-500 font-bold gap-y-14">
-            <p className="text-9xl font-bold">Ooops!</p>
-            <p className="text-blue-500 text-4xl">{error}</p>
+        <div className="min-h-96 flex flex-col items-center justify-center text-gray-500 font-bold gap-y-14">
+            <p className="text-9xl font-bold animate-spin"><Loader2 size={80}/></p>
+            <p className="text-gray-500 text-4xl">{error}</p>
         </div>
     );
     return (

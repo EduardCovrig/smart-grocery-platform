@@ -8,6 +8,8 @@ export interface Product
     stockQuantity: number
     unitOfMeasure: string;
 
+    nearExpiryQuantity?: number;
+    
     expirationDate?: string //datele vin ca string json
     brandName: string
     categoryName: string
