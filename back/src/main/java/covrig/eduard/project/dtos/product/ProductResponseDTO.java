@@ -22,6 +22,7 @@ public class ProductResponseDTO {
     private Integer stockQuantity;
     private String unitOfMeasure;
     private LocalDate expirationDate;
+    private Integer nearExpiryQuantity;
 
     private String brandName; //Product.brand.name
     private String categoryName; //Product.category.name
