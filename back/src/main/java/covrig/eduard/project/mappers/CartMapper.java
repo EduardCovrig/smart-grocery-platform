@@ -2,6 +2,7 @@ package covrig.eduard.project.mappers;
 
 import covrig.eduard.project.Models.Cart;
 import covrig.eduard.project.Models.CartItem;
+import covrig.eduard.project.Models.Product;
 import covrig.eduard.project.Services.ProductService;
 import covrig.eduard.project.dtos.cart.CartItemResponseDTO;
 import covrig.eduard.project.dtos.cart.CartResponseDTO;
@@ -27,6 +28,7 @@ public abstract class CartMapper {
     @Mapping(target = "pricePerUnit", expression = "java(calculateEffectivePrice(item))")
     //calcul subtotal folosind logica de loturi FIFO
     @Mapping(target = "subTotal", expression = "java(calculateSubTotal(item))")
+    @Mapping(target = "imageUrl", expression = "java(mapMainImage(item.getProduct()))")
    public abstract CartItemResponseDTO toItemDto(CartItem item);
     //metoda asta se foloseste automat de catre spring in toDto de mai sus ca sa transforme fiecare cartItem in CartItemResponseDTO
     //pentru lista de iteme ( spring cauta automat o metoda in mapper de forma "CartItemresponse DTO ... (CartItem ...)"
@@ -34,8 +36,16 @@ public abstract class CartMapper {
 
 
 
+
+
     //-- metodele pentru calculele din expresii --
 
+    public String mapMainImage(Product product) {
+        if (product == null || product.getImages() == null || product.getImages().isEmpty()) {
+            return null;
+        }
+        return product.getImages().get(0).getImageUrl();
+    }
 
     public Double calculateSubTotal(CartItem item) {
         if (item.getProduct() == null) return 0d;

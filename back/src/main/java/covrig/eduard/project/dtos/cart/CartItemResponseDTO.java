@@ -18,4 +18,5 @@ public class CartItemResponseDTO {
 
     private Integer quantity;   // Cantitatea selectata de user
     private Double subTotal;    // Calculat: pricePerUnit * quantity
+    private String imageUrl;
 }

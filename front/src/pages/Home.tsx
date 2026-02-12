@@ -18,7 +18,7 @@ export default function Home() {
             }
             catch (err) {
                 console.error(err);
-                setError("Error receivng data from backend. Is the backend api working?");
+                setError("It looks like someone stole all our food! Don't worry, we are working to get it back...");
             }
             finally { setIsLoading(false); }
         }
@@ -34,9 +34,9 @@ export default function Home() {
 
     }
     if (error) return (
-        <div className="min-h-screen flex flex-col items-center justify-center text-red-500 gap-4">
-            <p className="text-xl font-bold">Ooops!</p>
-            <p>{error}</p>
+        <div className="min-h-96 flex flex-col items-center justify-center text-red-500 font-bold gap-y-14">
+            <p className="text-9xl font-bold">Ooops!</p>
+            <p className="text-blue-500 text-4xl">{error}</p>
         </div>
     );
     return (

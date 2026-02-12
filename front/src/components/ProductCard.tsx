@@ -2,6 +2,7 @@ import { Product } from "@/types";
 import { Link } from "react-router-dom";
 import { ShoppingBasket } from "lucide-react";
 import { Button } from "./ui/button";
+import { useCart } from "@/context/CartContext";
 
 interface ProductCardProps {
     product: Product;
@@ -9,14 +10,17 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
     const imageToDisplay = product.imageUrls?.[0] || "https://placehold.co/400?text=No+Image";
+    const {addToCart}=useCart();
 
     const discountPercentage = product.hasActiveDiscount
         ? Math.round(((product.price - product.currentPrice) / product.price) * 100)
         : 0;
 
     const handleAddToCart = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); //nu ne duce la productdetails (evenimentul default cand se apasa pe link)
+        e.stopPropagation(); //nu transmite mai departe la parinti eventul
+
+        addToCart(product.id, 1);
     };
 
     return (
@@ -44,7 +48,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     {product.brandName}
                 </div>
 
-                <h3 className="text-lg font-extrabold text-gray-900 leading-tight line-clamp-2 mb-4 group-hover:text-green-700">
+                <h3 className="text-lg font-extrabold text-gray-900 leading-tight line-clamp-2 mb-4 group-hover:text-[#134c9c]">
                     {product.name}
                 </h3>
 
@@ -65,7 +69,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 <div className="mt-6">
                     <Button 
                         onClick={handleAddToCart}
-                        className="w-full h-12 rounded-xl bg-[#eef7ee] text-[#0d7a0d] hover:bg-[#0d7a0d] hover:text-white font-black text-base transition-all duration-300 flex items-center justify-center gap-3 shadow-none border-none"
+                        className="w-full h-12 rounded-xl bg-[#134c9c] text-white hover:bg-[#80c4e8] hover:text-[#134c9c] font-black text-base transition-all duration-300 flex items-center justify-center gap-3 shadow-none border-none"
                     >
                         <ShoppingBasket size={22} strokeWidth={2.5} />
                         Add to cart

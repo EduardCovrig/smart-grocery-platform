@@ -44,7 +44,7 @@ export default function Navbar() {
         <nav className="relative flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
             {/* ZONA 1: LOGO (Stanga) */}
             <div className="z-10">
-                <Link to="/" className="text-2xl font-bold text-blue-700 hover:text-blue-900">
+                <Link to="/" className="text-2xl font-bold text-[#134c9c] hover:text-blue-900">
                     EdwC Store
                 </Link>
             </div>

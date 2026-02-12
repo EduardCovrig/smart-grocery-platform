@@ -11,6 +11,7 @@ interface CartItem {
     pricePerUnit: number;
     quantity: number;
     subTotal: number;
+    imageUrl?: string; //optional
 }
 
 //ce expunem catre restul aplicatiei mai departe
