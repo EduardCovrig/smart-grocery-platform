@@ -3,12 +3,15 @@ package covrig.eduard.project.mappers;
 import covrig.eduard.project.Models.Cart;
 import covrig.eduard.project.Models.CartItem;
 import covrig.eduard.project.Models.Product;
+import covrig.eduard.project.Models.ProductAttribute;
 import covrig.eduard.project.Services.ProductService;
 import covrig.eduard.project.dtos.cart.CartItemResponseDTO;
 import covrig.eduard.project.dtos.cart.CartResponseDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import java.util.List;
 
 @Mapper(componentModel = "spring")
 public abstract class CartMapper {
@@ -29,6 +32,9 @@ public abstract class CartMapper {
     //calcul subtotal folosind logica de loturi FIFO
     @Mapping(target = "subTotal", expression = "java(calculateSubTotal(item))")
     @Mapping(target = "imageUrl", expression = "java(mapMainImage(item.getProduct()))")
+    @Mapping(source = "product.brand.name", target = "brandName")
+    @Mapping(target = "calories", expression = "java(getCalories(item.getProduct()))")
+    @Mapping(source = "product.nearExpiryQuantity", target = "nearExpiryQuantity")
    public abstract CartItemResponseDTO toItemDto(CartItem item);
     //metoda asta se foloseste automat de catre spring in toDto de mai sus ca sa transforme fiecare cartItem in CartItemResponseDTO
     //pentru lista de iteme ( spring cauta automat o metoda in mapper de forma "CartItemresponse DTO ... (CartItem ...)"
@@ -62,5 +68,17 @@ public abstract class CartMapper {
         return cart.getItems().stream()
                 .mapToDouble(this::calculateSubTotal)
                 .sum();
+    }
+
+    public String getCalories(Product product) {
+        if (product == null || product.getAttributes() == null) return null;
+
+        List<String> calorieKeys = List.of("calorii", "calories", "kcal", "valoare energetica", "valoare_energetica", "energy", "cal");
+
+        return product.getAttributes().stream()
+                .filter(attr -> calorieKeys.contains(attr.getName().toLowerCase())) //daca e in lista
+                .map(ProductAttribute::getValue)
+                .findFirst()
+                .orElse(null);
     }
 }

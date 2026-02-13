@@ -19,4 +19,8 @@ public class CartItemResponseDTO {
     private Integer quantity;   // Cantitatea selectata de user
     private Double subTotal;    // Calculat: pricePerUnit * quantity
     private String imageUrl;
+
+    private String brandName;
+    private String calories; //se extrage din atribute direct caloriile in mapper cu getCalories()
+    private Integer nearExpiryQuantity; //pt interfata cart, sa afisam modal daca cand mareste cantitatea depaseste
 }
