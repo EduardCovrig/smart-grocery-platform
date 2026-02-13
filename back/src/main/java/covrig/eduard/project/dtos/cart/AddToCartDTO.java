@@ -16,4 +16,6 @@ public class AddToCartDTO {
 
     @Min(value=1,message="Cantitatea introdusa trebuie sa fie minim 1")
     private Integer quantity;
+
+    private Boolean isFresh = false;
 }

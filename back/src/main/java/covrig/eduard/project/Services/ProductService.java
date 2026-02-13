@@ -40,9 +40,15 @@ public class ProductService {
         this.categoryRepository=categoryRepository;
     }
 
-    public Double calculateSubtotalForQuantity(Product product, Integer requestedQty) {
+    public Double calculateSubtotalForQuantity(Product product, Integer requestedQty, boolean forceFreshPrice) {
         if (product.getStockQuantity() <= 0) return 0.0;
 
+        // DACA USERUL VREA FRESH => PRET INTREG DIRECT (Ignoram logica smart)
+        if (forceFreshPrice) {
+            return requestedQty * product.getPrice();
+        }
+
+        //de aici in jos e logica smart, clasica.
         // pretul redus
         Double discountedPrice = getDiscountedPriceOnly(product);
 

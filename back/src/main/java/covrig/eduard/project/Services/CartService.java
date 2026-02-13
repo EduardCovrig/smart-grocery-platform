@@ -98,6 +98,14 @@ public class CartService {
             CartItem item=existingItem.get();
             int newQuantity=item.getQuantity()+dto.getQuantity();
 
+            // Daca userul selecteaza explicit FRESH acum, sau era deja FRESH, marcam linia ca FRESH
+            if (Boolean.TRUE.equals(dto.getIsFresh())) {
+                item.setIsFreshSelected(true);
+            }
+            if (dto.getIsFresh() != null) {
+                item.setIsFreshSelected(dto.getIsFresh());
+            }
+
             // Re-verificam stocul total (cantitatea veche + cea noua)
             if (productToAdd.getStockQuantity() < newQuantity) {
                 throw new RuntimeException("Stoc insuficient pentru cantitatea totala (" + newQuantity + ").");
@@ -111,6 +119,8 @@ public class CartService {
             newItem.setProduct(productToAdd);
             newItem.setCart(cart);
             newItem.setQuantity(dto.getQuantity());
+
+            newItem.setIsFreshSelected(Boolean.TRUE.equals(dto.getIsFresh())); //preferinta
 
             cart.getItems().add(newItem);
         }

@@ -55,7 +55,8 @@ public abstract class CartMapper {
 
     public Double calculateSubTotal(CartItem item) {
         if (item.getProduct() == null) return 0d;
-        return productService.calculateSubtotalForQuantity(item.getProduct(), item.getQuantity());
+        return productService.calculateSubtotalForQuantity(item.getProduct(), item.getQuantity(),
+                Boolean.TRUE.equals(item.getIsFreshSelected())); //daca true e egal cu ce e in paranteza, asa ne asiguram sa nu fie null niciodata
     }
 
     protected Double calculateEffectivePrice(CartItem item) {

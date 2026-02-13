@@ -17,6 +17,9 @@ public class CartItem {
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
+    @Column(name = "is_fresh_selected", nullable = false)
+    private Boolean isFreshSelected = false; // Default e false (adica foloseste logica smart/reduced de pe backend)
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cart_id")
     private Cart cart;

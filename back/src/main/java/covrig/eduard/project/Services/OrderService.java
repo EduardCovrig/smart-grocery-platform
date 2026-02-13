@@ -83,14 +83,41 @@ public class OrderService {
             }
 
             //CALCUL PREȚ DINAMIC PE LOTURI
-            Double itemSubtotal = productService.calculateSubtotalForQuantity(product, qtyToBuy);
+            boolean forceFresh = Boolean.TRUE.equals(cartItem.getIsFreshSelected());
+            Double itemSubtotal = productService.calculateSubtotalForQuantity(product, qtyToBuy, forceFresh);
             Double effectiveUnitPrice = itemSubtotal / qtyToBuy; // Preț mediu per unitate
 
-            // --- ACTUALIZARE STOCURI (Prioritizam lotul care expira)
-            int takenFromNearExpiry = Math.min(qtyToBuy, product.getNearExpiryQuantity());
-            product.setNearExpiryQuantity(product.getNearExpiryQuantity() - takenFromNearExpiry);
-            product.setStockQuantity(product.getStockQuantity() - qtyToBuy);
+            // --- ACTUALIZARE STOCURI (Prioritizam lotul care expira DOAR DACA nu e forceFresh)
+            if (forceFresh) {
+                //CAZ 1: Utilizatorul a cerut explicit FRESH
+                //Trebuie sa existe suficient stoc Fresh (Total - Expira in curand)
+                int freshStockAvailable = product.getStockQuantity() - product.getNearExpiryQuantity();
+
+                if (qtyToBuy > freshStockAvailable) {
+                    throw new RuntimeException("Stoc Fresh insuficient pentru: " + product.getName() +
+                            ". (Disponibil fresh: " + freshStockAvailable + ")");
+                }
+
+                //Scadem doar din stocul total.
+                //Stocul care expira (nearExpiryQuantity) ramane NEATINS, pentru ca nu s-a vandut.
+                product.setStockQuantity(product.getStockQuantity() - qtyToBuy);
+
+            } else {
+                //CAZ 2: Utilizatorul cumpara SMART/REDUCED (FIFO) (cazul default, daca nu cere utilizatorul fresh neaparat)
+                //Prioritizam lotul care expira pentru a reduce risipa
+                int takenFromNearExpiry = Math.min(qtyToBuy, product.getNearExpiryQuantity());
+
+                // Scadem din lotul care expira
+                product.setNearExpiryQuantity(product.getNearExpiryQuantity() - takenFromNearExpiry);
+                // Scadem si din total
+                product.setStockQuantity(product.getStockQuantity() - qtyToBuy);
+            }
+
+            // Salvam modificarile in baza de date
             productRepository.save(product);
+
+
+
 
             // Creare OrderItem
             OrderItem orderItem = orderMapper.cartItemToOrderItem(cartItem);
