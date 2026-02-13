@@ -107,6 +107,13 @@ export default function ProductDetails() {
 
         // (Backendul stia sa le bage la pretul full, dar
         //utilzatorul nu era anuntat. )
+        console.log("DEBUG CHECK:", {
+            buyingMode,
+            quantityCeruta: quantity,
+            stocRedusTotal: expiringStockTotal,
+            dejaInCos: quantityInCart,
+            maiIncap: remainingReducedStock
+        });
 
         // Daca suntem pe Reduced si vrem mai mult decat exista redus -> modal de alegere
         if (buyingMode === 'reduced' && quantity > remainingReducedStock) {
@@ -350,34 +357,76 @@ export default function ProductDetails() {
                         </button>
 
                         <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4 text-orange-600">
-                                <AlertTriangle size={32} />
+                            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4 text-orange-600 hover:bg-[#80c4e8] transition-colors duration-400">
+                                <AlertTriangle size={32}/>
                             </div>
                             
                             <h3 className="text-xl font-black text-gray-900 mb-2">Partial Stock Available</h3>
-                            <p className="text-gray-600 mb-6">
-                                You requested <strong>{quantity}</strong> items, but only <strong>{expiringStockTotal}</strong> are available at the reduced price.
-                                <br/><br/>
-                                The remaining <strong>{quantity - expiringStockTotal}</strong> will be added at full price.
-                            </p>
+                            
+                            {/* --- CALCUL MATEMATIC PENTRU MODAL --- */}
+                            {(() => {
+                                //Total DB - Ce ai in cos
+                                const availableReduced = Math.max(0, expiringStockTotal - quantityInCart);
+                                //Cate bucati vor fi la pret intreg (Ce ceri acum - Ce e disponibil)
+                                const overflowToFullPrice = quantity - availableReduced;
 
-                            <div className="flex flex-col gap-3 w-full">
-                               <Button 
-                                    onClick={() => finalizeAddToCart(quantity)} 
-                                    disabled={isAddingToCart} // Dezactivam cand incarca
-                                    className="w-full bg-[#134c9c] hover:bg-[#1e5cad] text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2"
-                                >
-                                    {isAddingToCart ? <Loader2 className="animate-spin" /> : "Okay, Add All (Mixed Price)"}
-                                </Button>
-                               <Button 
-                                    variant="outline"
-                                    onClick={() => finalizeAddToCart(expiringStockTotal)} 
-                                    disabled={isAddingToCart} // Dezactivam cand incarca
-                                    className="w-full border-orange-200 text-orange-700 hover:bg-orange-50 h-12 rounded-xl font-bold flex items-center justify-center gap-2"
-                                >
-                                    {isAddingToCart ? <Loader2 className="animate-spin" /> : `No, add only ${expiringStockTotal} reduced items`}
-                                </Button>
-                            </div>
+                                return (
+                                    <>
+                                        <p className="text-gray-600 mb-6">
+                                            You requested <strong>{quantity}</strong> items.
+                                            <br/>
+                                            {availableReduced > 0 ? (
+                                                <>
+                                                    Only <strong>{availableReduced}</strong> are left at the reduced price.
+                                                    <br/>
+                                                    The remaining <strong>{overflowToFullPrice}</strong> will be added at <span className="text-[#1e5cad] font-bold">full price</span>.
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-red-600 font-bold">No more reduced items available!</span>
+                                                    <br/>
+                                                    All <strong>{quantity}</strong> items will be added at <span className="text-[#1e5cad] font-bold">full price</span>.
+                                                </>
+                                            )}
+                                        </p>
+
+                                        <div className="flex flex-col gap-3 w-full">
+                                            {/* BUTON 1: ADD ALL (MIXED) */}
+                                            <Button 
+                                                onClick={() => finalizeAddToCart(quantity)} 
+                                                disabled={isAddingToCart}
+                                                className="w-full bg-[#134c9c] hover:bg-[#1e5cad] text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2"
+                                            >
+                                                {isAddingToCart ? 
+                                                <Loader2 className="animate-spin" />
+                                                 : "Okay, Add All (Mixed Price)"}
+                                            </Button>
+                                            
+                                            {/* BUTON 2: ADD ONLY REDUCED (SAU CANCEL DACA NU MAI SUNT) */}
+                                            {availableReduced > 0 ? (
+                                                <Button 
+                                                    variant="outline"
+                                                    onClick={() => finalizeAddToCart(availableReduced)} 
+                                                    disabled={isAddingToCart}
+                                                    className="w-full border-orange-200 text-orange-700 hover:bg-orange-50 h-12 rounded-xl font-bold flex items-center justify-center gap-2"
+                                                >
+                                                    {isAddingToCart ?
+                                                     <Loader2 className="animate-spin" /> 
+                                                     : `No, add only ${availableReduced} reduced items`}
+                                                </Button>
+                                            ) : (
+                                                <Button 
+                                                    variant="outline"
+                                                    onClick={() => setShowConfirmModal(false)}
+                                                    className="w-full border-gray-200 text-gray-600 hover:bg-gray-100 h-12 rounded-xl font-bold"
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>

@@ -12,6 +12,9 @@ interface CartItem {
     quantity: number;
     subTotal: number;
     imageUrl?: string; //optional
+    brandName?: string; //optional
+    calories?: string; //optional
+    nearExpiryQuantity?: number; //optional
 }
 
 //ce expunem catre restul aplicatiei mai departe
