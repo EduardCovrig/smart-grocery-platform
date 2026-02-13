@@ -98,8 +98,18 @@ export default function ProductDetails() {
     const handleAddToCartClick = () => {
         if (!product) return;
 
+        const remainingReducedStock = Math.max(0, expiringStockTotal - quantityInCart); //am modificait pe 13 februarie aici, 
+        // de verificat ulterior daca apare vreun bug da nu cred.
+        //inainte nu tinea cont de cantitatea din cos, acum face maximul dintre 0 si diferenta dintre baza de date - ce a bagat
+        //utiliatorul in cos. 
+        //deci acum se va afisa modalul mereu, inainte gasisem un bug in care daca aveam 5 produse pe stoc care expira, si 
+        //utilizatorul baga 5, ii mergea, apoi apasa iar 5, si ii mergea iar. 
+
+        // (Backendul stia sa le bage la pretul full, dar
+        //utilzatorul nu era anuntat. )
+
         // Daca suntem pe Reduced si vrem mai mult decat exista redus -> modal de alegere
-        if (buyingMode === 'reduced' && quantity > expiringStockTotal) {
+        if (buyingMode === 'reduced' && quantity > remainingReducedStock) {
             setShowConfirmModal(true);
         } else {
             // Caz normal (Fresh sau Reduced care se incadreaza in stoc)
