@@ -29,6 +29,16 @@ export default function Cart()
         // VERIFICARE PRAG:
         const limit = item.nearExpiryQuantity || 0;
 
+        // 1. CAZ FRESH: Daca utilizatorul a ales deja Fresh, ignoram complet stocul redus.
+        // Doar il adaugam (cu flag-ul true ca sa ramana Fresh in DB)
+        if (item.isFresh) {
+            setIsUpdating(true);
+            await addToCart(productId, 1, true); // true explicit (fresh)
+            setIsUpdating(false);
+            return;
+        }
+        // 2. caz smart (reduced)
+
         //logica e ca modalul ar trebui sa se afiseze doar in cazul in care cantitatea+1 depaseste limita,
         //deci cantitatea actuala e egala cu limita. 
         //daca cantitatea e mai mare decat limita, nu e nevoie sa o gestionam pentru ca utilizatorul a fost deja informa
@@ -51,7 +61,9 @@ export default function Cart()
     const confirmIncrement = async () => {
     if (!pendingItem) return;
     setIsUpdating(true); 
-    await addToCart(pendingItem.productId, 1);
+    //// Daca a acceptat modalul, inseamna ca trece pe Full Price (Fresh)
+        // Deci trimitem TRUE
+    await addToCart(pendingItem.productId, 1,true);
     setIsUpdating(false);
 
     setShowIncrementModal(false);

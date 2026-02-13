@@ -86,45 +86,40 @@ public class CartService {
                 .orElseThrow(() -> new RuntimeException("Produsul cu ID-ul " + dto.getProductId() + " nu exista."));
 
         if(dto.getQuantity()>productToAdd.getStockQuantity())
-            throw new RuntimeException("Stocul insuficient! Mai sunt doar " + productToAdd.getStockQuantity() + " produse");
+            throw new RuntimeException("Stoc insuficient! Mai sunt doar " + productToAdd.getStockQuantity() + " produse");
         //final verificari validitate cerere
 
         Cart cart=cartRepository.findByUserId(user.getId()).orElseGet(() -> createNewCart(user)); //orElseGet e Lazy, orElse simplu nu e
         //deci la orElseGet se exectua doar daca se ajunge acolo, orElse ar executa mereu ce e in paranteze, degeaba
-        //vedem daca e deja in cos aflat produsul
-        Optional<CartItem> existingItem=cart.getItems().stream().filter(x -> x.getProduct().getId().equals(productToAdd.getId())).findFirst();
-        if(existingItem.isPresent()) //item deja aflat in cos
-        {
-            CartItem item=existingItem.get();
-            int newQuantity=item.getQuantity()+dto.getQuantity();
+        // Determinam ce a cerut utilizatorul acum (Fresh sau Reduced)
+        boolean isRequestingFresh = Boolean.TRUE.equals(dto.getIsFresh());
 
-            // Daca userul selecteaza explicit FRESH acum, sau era deja FRESH, marcam linia ca FRESH
-            if (Boolean.TRUE.equals(dto.getIsFresh())) {
-                item.setIsFreshSelected(true);
-            }
-            if (dto.getIsFresh() != null) {
-                item.setIsFreshSelected(dto.getIsFresh());
-            }
+        // LOGICA NOUA: Cautam produsul IN COS care are ACELASI ID si ACELASI FLAG isFresh.
+        Optional<CartItem> existingItem = cart.getItems().stream()
+                .filter(x -> x.getProduct().getId().equals(productToAdd.getId())
+                        && Boolean.TRUE.equals(x.getIsFreshSelected()) == isRequestingFresh)
+                .findFirst();
 
-            // Re-verificam stocul total (cantitatea veche + cea noua)
+        if (existingItem.isPresent()) {
+            // Caz A: Am gasit exact acelasi produs, in aceeasi stare (ex: a vrut Fresh si avea deja Fresh)
+            CartItem item = existingItem.get();
+            int newQuantity = item.getQuantity() + dto.getQuantity();
+
             if (productToAdd.getStockQuantity() < newQuantity) {
                 throw new RuntimeException("Stoc insuficient pentru cantitatea totala (" + newQuantity + ").");
             }
             item.setQuantity(newQuantity);
-        }
-        //daca nu este deja aflat in cos
-        else
-        {
+        } else {
+            // Caz B: Nu are acest produs in cos, SAU il are dar pe cealalta stare (avea Reduced, acum vrea Fresh).
+            // Cream un rand NOU in cos.
             CartItem newItem = new CartItem();
             newItem.setProduct(productToAdd);
             newItem.setCart(cart);
             newItem.setQuantity(dto.getQuantity());
-
-            newItem.setIsFreshSelected(Boolean.TRUE.equals(dto.getIsFresh())); //preferinta
+            newItem.setIsFreshSelected(isRequestingFresh); // Setam starea pentru acest rand specific
 
             cart.getItems().add(newItem);
         }
-
         interactionService.logInteraction(userEmail, dto.getProductId(), "ADD_TO_CART");
         //adaugam interactiunea, in tabelul lui
 

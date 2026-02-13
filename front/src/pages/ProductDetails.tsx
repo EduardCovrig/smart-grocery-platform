@@ -98,8 +98,18 @@ export default function ProductDetails() {
     const handleAddToCartClick = () => {
         if (!product) return;
 
+        //CAZ 1
+        if (buyingMode === 'fresh') {
+            finalizeAddToCart(quantity, true); // TRUE -> FRESH
+            return;
+    }
+
+    //CAZ 2 
+    //NEVER TOUCH AGAIN (se strica)
         const remainingReducedStock = Math.max(0, expiringStockTotal - quantityInCart); //am modificait pe 13 februarie aici, 
-        // de verificat ulterior daca apare vreun bug da nu cred.
+        // de verificat ulterior daca apare vreun bug da ar trebui sa fie ok tot acum (acum chiar e, tot pe 13 februarie am modificat)
+
+
         //inainte nu tinea cont de cantitatea din cos, acum face maximul dintre 0 si diferenta dintre baza de date - ce a bagat
         //utiliatorul in cos. 
         //deci acum se va afisa modalul mereu, inainte gasisem un bug in care daca aveam 5 produse pe stoc care expira, si 
@@ -124,7 +134,7 @@ export default function ProductDetails() {
         }
     };
 
-    const finalizeAddToCart = async (qtyToAdd: number) => {
+    const finalizeAddToCart = async (qtyToAdd: number,isFreshMode: boolean=false ) => {
        if (!product) return;
 
         // 1. Activam loading-ul
@@ -133,10 +143,10 @@ export default function ProductDetails() {
         // 2. Asteptam 500ms (efect vizual)
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // 3. Facem actiunea reala
-        await addToCart(product.id, qtyToAdd);
-        
-        // 4. Resetam starile
+        // Trimitem datele si preferinta (true/false) catre Context -> Backend
+        await addToCart(product.id, qtyToAdd, isFreshMode);
+
+        //Resetam starile
         setIsAddingToCart(false);
         setQuantity(1);
         setShowConfirmModal(false);
