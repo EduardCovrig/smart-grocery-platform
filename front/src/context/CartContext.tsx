@@ -15,14 +15,14 @@ interface CartItem {
     brandName?: string; //optional
     calories?: string; //optional
     nearExpiryQuantity?: number; //optional
-    isFresh?: boolean; //optional
+    freshMode?: boolean; //optional
 }
 
 //ce expunem catre restul aplicatiei mai departe
 interface CartContextType {
     cartItems: CartItem[];
     cartCount: number;      // Numarul total de produse (pt bulina rosie de pe navbar)
-    addToCart: (productId: number, quantity: number, isFresh?: boolean) => Promise<void>;
+    addToCart: (productId: number, quantity: number, freshMode?: boolean) => Promise<void>;
     removeFromCart: (itemId: number) => Promise<void>;
     fetchCart: () => Promise<void>; // refresh cart manual
 }
@@ -57,7 +57,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // 2. FUNCTIA DE ADAUGARE (POST) catre Backend
-    const addToCart = async (productId: number, quantity: number, isFresh: boolean=false) => {
+    const addToCart = async (productId: number, quantity: number, freshMode: boolean=false) => {
         if (!isAuthenticated) {
             alert("Please login to complete your purchase!");
             return;
@@ -67,13 +67,13 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             const apiUrl = import.meta.env.VITE_API_URL;
             await axios.post(
                 `${apiUrl}/cart/items`,
-                { productId, quantity, isFresh }, // Body-ul cererii (DTO-ul din Java)
+                { productId, quantity, freshMode }, // Body-ul cererii (DTO-ul din Java)
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             
             // Dupa ce am adaugat cu succes, recitim cosul de la server ca sa fim sincronizati
             await fetchCart(); 
-            console.log(`Product succesfully added. Fresh Mode: ${isFresh}`);
+            console.log(`Product succesfully added. Fresh Mode: ${freshMode}`);
         } catch (error) {
             console.error("Error adding product to cart:", error);
         }

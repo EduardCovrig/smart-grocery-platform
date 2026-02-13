@@ -5,7 +5,9 @@ import lombok.*;
 
 @Entity
 @Table(name = "cart_item")
-@Data
+@Getter
+@Setter
+
 @NoArgsConstructor
 @AllArgsConstructor
 public class CartItem {

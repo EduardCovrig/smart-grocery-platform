@@ -76,56 +76,61 @@ public class CartService {
         return cart;
     }
     //2 ADD ITEMS TO CART
+    //2 ADD ITEMS TO CART
     public CartResponseDTO addToCart(String userEmail, AddToCartDTO dto)
     {
-        //verificari validitate cerere adaugare
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("Utilizatorul cu email-ul " + userEmail + " nu a fost gasit."));
 
         Product productToAdd = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new RuntimeException("Produsul cu ID-ul " + dto.getProductId() + " nu exista."));
 
-        if(dto.getQuantity()>productToAdd.getStockQuantity())
-            throw new RuntimeException("Stoc insuficient! Mai sunt doar " + productToAdd.getStockQuantity() + " produse");
-        //final verificari validitate cerere
+        Cart cart = cartRepository.findByUserId(user.getId()).orElseGet(() -> createNewCart(user));
 
-        Cart cart=cartRepository.findByUserId(user.getId()).orElseGet(() -> createNewCart(user)); //orElseGet e Lazy, orElse simplu nu e
-        //deci la orElseGet se exectua doar daca se ajunge acolo, orElse ar executa mereu ce e in paranteze, degeaba
-        // Determinam ce a cerut utilizatorul acum (Fresh sau Reduced)
-        boolean isRequestingFresh = Boolean.TRUE.equals(dto.getIsFresh());
+        // 1. Cat stoc e deja in cos (la un loc: fresh + expirat)
+        int totalQuantityInCart = cart.getItems().stream()
+                .filter(x -> x.getProduct().getId().equals(productToAdd.getId()))
+                .mapToInt(CartItem::getQuantity)
+                .sum();
 
-        // LOGICA NOUA: Cautam produsul IN COS care are ACELASI ID si ACELASI FLAG isFresh.
+        if (totalQuantityInCart + dto.getQuantity() > productToAdd.getStockQuantity()) {
+            throw new RuntimeException("Stoc insuficient in magazin pentru aceasta cantitate!");
+        }
+
+        // Preluam variabila corecta: freshMode
+        boolean isRequestingFresh = Boolean.TRUE.equals(dto.getFreshMode());
+
+        // Daca cere REDUCED, ne asiguram ca nu depaseste limita nearExpiryQuantity
+        if (!isRequestingFresh) {
+            int reducedInCart = cart.getItems().stream()
+                    .filter(x -> x.getProduct().getId().equals(productToAdd.getId()) && !Boolean.TRUE.equals(x.getIsFreshSelected()))
+                    .mapToInt(CartItem::getQuantity)
+                    .sum();
+
+            if (reducedInCart + dto.getQuantity() > productToAdd.getNearExpiryQuantity()) {
+                throw new RuntimeException("Nu poti adauga mai multe produse la reducere decat stocul disponibil!");
+            }
+        }
+
+        // Cautam produsul IN COS cu ACELASI ID si ACEEASI STARE
         Optional<CartItem> existingItem = cart.getItems().stream()
                 .filter(x -> x.getProduct().getId().equals(productToAdd.getId())
                         && Boolean.TRUE.equals(x.getIsFreshSelected()) == isRequestingFresh)
                 .findFirst();
 
         if (existingItem.isPresent()) {
-            // Caz A: Am gasit exact acelasi produs, in aceeasi stare (ex: a vrut Fresh si avea deja Fresh)
             CartItem item = existingItem.get();
-            int newQuantity = item.getQuantity() + dto.getQuantity();
-
-            if (productToAdd.getStockQuantity() < newQuantity) {
-                throw new RuntimeException("Stoc insuficient pentru cantitatea totala (" + newQuantity + ").");
-            }
-            item.setQuantity(newQuantity);
+            item.setQuantity(item.getQuantity() + dto.getQuantity());
         } else {
-            // Caz B: Nu are acest produs in cos, SAU il are dar pe cealalta stare (avea Reduced, acum vrea Fresh).
-            // Cream un rand NOU in cos.
             CartItem newItem = new CartItem();
             newItem.setProduct(productToAdd);
             newItem.setCart(cart);
             newItem.setQuantity(dto.getQuantity());
-            newItem.setIsFreshSelected(isRequestingFresh); // Setam starea pentru acest rand specific
-
+            newItem.setIsFreshSelected(isRequestingFresh);
             cart.getItems().add(newItem);
         }
-        interactionService.logInteraction(userEmail, dto.getProductId(), "ADD_TO_CART");
-        //adaugam interactiunea, in tabelul lui
 
-        //Cart savedCart=cartRepository.save(cart);
-        // return cartMapper.toDto(savedCart);
-        //echivalent cu
+        interactionService.logInteraction(userEmail, dto.getProductId(), "ADD_TO_CART");
         cart.setUpdatedAt(Instant.now());
         return cartMapper.toDto(cartRepository.save(cart));
     }

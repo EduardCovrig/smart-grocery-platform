@@ -49,23 +49,13 @@ public class ProductService {
         }
 
         //de aici in jos e logica smart, clasica.
-        // pretul redus
+        // ACUM CA AVEM RANDURI SEPARATE IN COS, TOT RANDUL PRIMESTE PRETUL REDUS
         Double discountedPrice = getDiscountedPriceOnly(product);
 
-        // Daca nu exista recuceri sau nu se afla in cazul de apropeire de expirare, avem pretul normal
-        if (discountedPrice.equals(product.getPrice()) || product.getNearExpiryQuantity() <= 0) {
-            return requestedQty * product.getPrice();
-        }
-        // Aplicam pretul redus doar pe cantitatea care se afla in pragul de expirare
-        int qtyAtDiscount = Math.min(requestedQty, product.getNearExpiryQuantity());
-        int qtyAtFullPrice = Math.max(0, requestedQty - qtyAtDiscount);
+        log.info("Calcul pret pentru {}: {} bucati la pret de {}.",
+                product.getName(), requestedQty, discountedPrice);
 
-        Double total = (qtyAtDiscount * discountedPrice) + (qtyAtFullPrice * product.getPrice());
-
-        log.info("Calcul pret mixt pentru {}: {} bucati la pret redus, {} la pret plin.",
-                product.getName(), qtyAtDiscount, qtyAtFullPrice);
-
-        return total;
+        return requestedQty * discountedPrice;
     }
     //Cat ar fi pretul redus pentru o singura unitate din lotul critic
     private Double getDiscountedPriceOnly(Product product) {
@@ -283,7 +273,7 @@ public class ProductService {
         return enrichProductDto(productRepository.save(existingProduct));
     }
 
-        //DELETE
+    //DELETE
 
     public ProductResponseDTO deleteProduct(Long id) {
         Product p = productRepository.findById(id)
@@ -291,7 +281,4 @@ public class ProductService {
         productRepository.delete(p);
         return productMapper.toDto(p);
     }
-    }
-
-
-
+}

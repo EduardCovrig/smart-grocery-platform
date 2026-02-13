@@ -3,7 +3,7 @@ import { useParams, Navigate, Link } from "react-router-dom";
 import axios from "axios";
 import { Product } from "@/types";
 import { Button } from "@/components/ui/button";
-import { ShoppingBasket, Loader2, ShieldCheck, AlertTriangle, Plus, Minus, Clock, CheckCircle2, X } from "lucide-react";
+import { ShoppingBasket, Loader2, ShieldCheck, AlertTriangle, Plus, Minus, Clock, CheckCircle2 } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 
 export default function ProductDetails() {
@@ -19,9 +19,6 @@ export default function ProductDetails() {
     // 'reduced' = tab-ul cu produse la reducere
     // 'fresh' = tab-ul cu produse la pret intreg
     const [buyingMode, setBuyingMode] = useState<'reduced' | 'fresh'>('reduced');
-    
-    // State pentru Modalul de confirmare (Toast)
-    const [showConfirmModal, setShowConfirmModal] = useState(false);
 
     // Cantitatea selectata (resetata la 1)
     const [quantity, setQuantity] = useState(1);
@@ -58,25 +55,30 @@ export default function ProductDetails() {
         fetchProduct();
     }, [id]);
 
-    // --- LOGICA DE STOCURI ---
-    const cartItem = cartItems.find(item => item.productId === product?.id);
-    const quantityInCart = cartItem ? cartItem.quantity : 0;
-    const totalAvailableStock = (product?.stockQuantity || 0) - quantityInCart;
+    // --- LOGICA DE STOCURI (SEPARARE STRICTA) ---
+    // Cautam cate produse REDUSE avem deja in cos
+    const cartItemReduced = cartItems.find(item => Number(item.productId) === Number(product?.id) && !item.freshMode);
+    const quantityInCartReduced = cartItemReduced ? cartItemReduced.quantity : 0;
+
+    // Cautam cate produse FRESH avem deja in cos
+    const cartItemFresh = cartItems.find(item => Number(item.productId) === Number(product?.id) && item.freshMode);
+    const quantityInCartFresh = cartItemFresh ? cartItemFresh.quantity : 0;
 
     // Calculam stocurile separate
     const expiringStockTotal = product?.nearExpiryQuantity || 0;
-    // Consideram ca 'expiringStock' e cat a mai ramas din totalul de reduse, presupunand ca cele din cos au luat prioritate.
+    const remainingReducedStock = Math.max(0, expiringStockTotal - quantityInCartReduced);
     
     const freshStockTotal = (product?.stockQuantity || 0) - expiringStockTotal;
+    const remainingFreshStock = Math.max(0, freshStockTotal - quantityInCartFresh);
     
     // Logica Out of Stock pe variante
-    const isReducedOutOfStock = expiringStockTotal <= 0 || totalAvailableStock <= 0;
-    const isFreshOutOfStock = freshStockTotal <= 0 || totalAvailableStock <= 0;
+    const isReducedOutOfStock = remainingReducedStock <= 0;
+    const freshModeOutOfStock = remainingFreshStock <= 0;
 
     // Limita max pentru butonul +
     const maxQuantityForCurrentMode = buyingMode === 'reduced' 
-        ? totalAvailableStock // La reduced poti selecta tot stocul, ca apoi sa te intrebe modalul
-        : freshStockTotal; // La fresh nu poti selecta mai mult decat exista fresh
+        ? remainingReducedStock 
+        : remainingFreshStock;
 
     // Resetam cantitatea cand schimbam tab-ul
     const handleTabChange = (mode: 'reduced' | 'fresh') => {
@@ -98,58 +100,27 @@ export default function ProductDetails() {
     const handleAddToCartClick = () => {
         if (!product) return;
 
-        //CAZ 1
-        if (buyingMode === 'fresh') {
-            finalizeAddToCart(quantity, true); // TRUE -> FRESH
-            return;
-    }
+        //CAZ 2 
 
-    //CAZ 2 
-    //NEVER TOUCH AGAIN (se strica)
-        const remainingReducedStock = Math.max(0, expiringStockTotal - quantityInCart); //am modificait pe 13 februarie aici, 
-        // de verificat ulterior daca apare vreun bug da ar trebui sa fie ok tot acum (acum chiar e, tot pe 13 februarie am modificat)
-
-
-        //inainte nu tinea cont de cantitatea din cos, acum face maximul dintre 0 si diferenta dintre baza de date - ce a bagat
-        //utiliatorul in cos. 
-        //deci acum se va afisa modalul mereu, inainte gasisem un bug in care daca aveam 5 produse pe stoc care expira, si 
-        //utilizatorul baga 5, ii mergea, apoi apasa iar 5, si ii mergea iar. 
-
-        // (Backendul stia sa le bage la pretul full, dar
-        //utilzatorul nu era anuntat. )
-        console.log("DEBUG CHECK:", {
-            buyingMode,
-            quantityCeruta: quantity,
-            stocRedusTotal: expiringStockTotal,
-            dejaInCos: quantityInCart,
-            maiIncap: remainingReducedStock
-        });
-
-        // Daca suntem pe Reduced si vrem mai mult decat exista redus -> modal de alegere
-        if (buyingMode === 'reduced' && quantity > remainingReducedStock) {
-            setShowConfirmModal(true);
-        } else {
-            // Caz normal (Fresh sau Reduced care se incadreaza in stoc)
-            finalizeAddToCart(quantity);
-        }
+        const freshModeMode = buyingMode === 'fresh';
+        finalizeAddToCart(quantity, freshModeMode);
     };
 
-    const finalizeAddToCart = async (qtyToAdd: number,isFreshMode: boolean=false ) => {
+    const finalizeAddToCart = async (qtyToAdd: number, freshModeMode: boolean=false ) => {
        if (!product) return;
 
         // 1. Activam loading-ul
         setIsAddingToCart(true);
 
-        // 2. Asteptam 500ms (efect vizual)
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // 2. Asteptam scurt (efect vizual)
+        await new Promise(resolve => setTimeout(resolve, 300));
 
         // Trimitem datele si preferinta (true/false) catre Context -> Backend
-        await addToCart(product.id, qtyToAdd, isFreshMode);
+        await addToCart(product.id, qtyToAdd, freshModeMode);
 
         //Resetam starile
         setIsAddingToCart(false);
         setQuantity(1);
-        setShowConfirmModal(false);
     };
 
     if (isLoading) {
@@ -255,7 +226,7 @@ export default function ProductDetails() {
                                     </button>
                                     <button 
                                         onClick={() => handleTabChange('fresh')}
-                                        disabled={isFreshOutOfStock}
+                                        disabled={freshModeOutOfStock}
                                         className={`flex-1 py-2 text-sm font-bold rounded-md flex items-center justify-center gap-2 transition-all ${
                                             buyingMode === 'fresh' 
                                             ? "bg-white text-blue-600 shadow-sm" 
@@ -272,12 +243,7 @@ export default function ProductDetails() {
                             <div className="flex items-end justify-between w-full">
                                 {/* Zona Pret */}
                                 <div>
-                                    {/* LOGICA NOUA DE AFISARE PRET: 
-                                        Afisam pretul redus daca:
-                                        1. Suntem pe tab-ul 'reduced' (cazul expirare)
-                                        SAU
-                                        2. NU avem stoc de expirare (deci e reducere normala) SI produsul are reducere activa
-                                    */}
+                                    {/* LOGICA NOUA DE AFISARE PRET */}
                                     {(buyingMode === 'reduced' && product.hasActiveDiscount) || (!hasExpiryStock && product.hasActiveDiscount) ? (
                                         <>
                                             <div className={`text-4xl font-black tracking-tighter ${hasExpiryStock ? "text-orange-600" : "text-red-600"}`}>
@@ -304,7 +270,7 @@ export default function ProductDetails() {
                                 </div>
 
                                 {/* Selector Cantitate */}
-                                <div className={`flex items-center gap-3 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm ${(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && isFreshOutOfStock) ? "opacity-50 pointer-events-none" : ""}`}>
+                                <div className={`flex items-center gap-3 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm ${(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && freshModeOutOfStock) ? "opacity-50 pointer-events-none" : ""}`}>
                                     <button onClick={handleDecrease} disabled={quantity <= 1} className="p-2 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50">
                                         <Minus size={18} strokeWidth={3} />
                                     </button>
@@ -318,9 +284,9 @@ export default function ProductDetails() {
                             {/* 3. BUTON ADD TO CART */}
                             <Button 
                                 onClick={handleAddToCartClick}
-                                disabled={(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && isFreshOutOfStock) || isAddingToCart}
+                                disabled={(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && freshModeOutOfStock) || isAddingToCart}
                                 className={`w-full h-12 rounded-lg font-bold text-lg flex items-center justify-center gap-2 shadow-sm transition-all 
-                                    ${(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && isFreshOutOfStock)
+                                    ${(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && freshModeOutOfStock)
                                         ? "bg-gray-200 text-gray-500 cursor-not-allowed" 
                                         : buyingMode === 'reduced' 
                                             ? "bg-orange-600 hover:bg-orange-700 text-white"
@@ -335,7 +301,7 @@ export default function ProductDetails() {
                                 ) : (
                                     <>
                                         <ShoppingBasket size={20} />
-                                        {(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && isFreshOutOfStock) 
+                                        {(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && freshModeOutOfStock) 
                                             ? "OUT OF STOCK" 
                                             : hasExpiryStock 
                                                 ? (buyingMode === 'reduced' ? "Add Reduced Items" : "Add Fresh Items")
@@ -357,90 +323,6 @@ export default function ProductDetails() {
                     </div>
                 </div>
             </div>
-
-            {/* --- MODAL (TOAST) DE CONFIRMARE --- */}
-            {showConfirmModal && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative border border-orange-100 animate-in zoom-in-95 duration-200">
-                        <button onClick={() => setShowConfirmModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                            <X size={24} />
-                        </button>
-
-                        <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4 text-orange-600 hover:bg-[#80c4e8] transition-colors duration-400">
-                                <AlertTriangle size={32}/>
-                            </div>
-                            
-                            <h3 className="text-xl font-black text-gray-900 mb-2">Partial Stock Available</h3>
-                            
-                            {/* --- CALCUL MATEMATIC PENTRU MODAL --- */}
-                            {(() => {
-                                //Total DB - Ce ai in cos
-                                const availableReduced = Math.max(0, expiringStockTotal - quantityInCart);
-                                //Cate bucati vor fi la pret intreg (Ce ceri acum - Ce e disponibil)
-                                const overflowToFullPrice = quantity - availableReduced;
-
-                                return (
-                                    <>
-                                        <p className="text-gray-600 mb-6">
-                                            You requested <strong>{quantity}</strong> items.
-                                            <br/>
-                                            {availableReduced > 0 ? (
-                                                <>
-                                                    Only <strong>{availableReduced}</strong> are left at the reduced price.
-                                                    <br/>
-                                                    The remaining <strong>{overflowToFullPrice}</strong> will be added at <span className="text-[#1e5cad] font-bold">full price</span>.
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span className="text-red-600 font-bold">No more reduced items available!</span>
-                                                    <br/>
-                                                    All <strong>{quantity}</strong> items will be added at <span className="text-[#1e5cad] font-bold">full price</span>.
-                                                </>
-                                            )}
-                                        </p>
-
-                                        <div className="flex flex-col gap-3 w-full">
-                                            {/* BUTON 1: ADD ALL (MIXED) */}
-                                            <Button 
-                                                onClick={() => finalizeAddToCart(quantity)} 
-                                                disabled={isAddingToCart}
-                                                className="w-full bg-[#134c9c] hover:bg-[#1e5cad] text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2"
-                                            >
-                                                {isAddingToCart ? 
-                                                <Loader2 className="animate-spin" />
-                                                 : "Okay, Add All (Mixed Price)"}
-                                            </Button>
-                                            
-                                            {/* BUTON 2: ADD ONLY REDUCED (SAU CANCEL DACA NU MAI SUNT) */}
-                                            {availableReduced > 0 ? (
-                                                <Button 
-                                                    variant="outline"
-                                                    onClick={() => finalizeAddToCart(availableReduced)} 
-                                                    disabled={isAddingToCart}
-                                                    className="w-full border-orange-200 text-orange-700 hover:bg-orange-50 h-12 rounded-xl font-bold flex items-center justify-center gap-2"
-                                                >
-                                                    {isAddingToCart ?
-                                                     <Loader2 className="animate-spin" /> 
-                                                     : `No, add only ${availableReduced} reduced items`}
-                                                </Button>
-                                            ) : (
-                                                <Button 
-                                                    variant="outline"
-                                                    onClick={() => setShowConfirmModal(false)}
-                                                    className="w-full border-gray-200 text-gray-600 hover:bg-gray-100 h-12 rounded-xl font-bold"
-                                                >
-                                                    Cancel
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
