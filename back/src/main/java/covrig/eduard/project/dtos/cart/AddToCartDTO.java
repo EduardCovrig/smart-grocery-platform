@@ -1,5 +1,6 @@
 package covrig.eduard.project.dtos.cart;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -17,5 +18,5 @@ public class AddToCartDTO {
     @Min(value=1,message="Cantitatea introdusa trebuie sa fie minim 1")
     private Integer quantity;
 
-    private Boolean isFresh = false;
+    private Boolean freshMode = false;
 }

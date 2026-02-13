@@ -1,5 +1,6 @@
 package covrig.eduard.project.dtos.cart;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,5 +24,6 @@ public class CartItemResponseDTO {
     private String brandName;
     private String calories; //se extrage din atribute direct caloriile in mapper cu getCalories()
     private Integer nearExpiryQuantity; //pt interfata cart, sa afisam modal daca cand mareste cantitatea depaseste
-    private Boolean isFresh; //fresh sau expira soon
+
+    private Boolean freshMode; //fresh sau expira soon
 }

@@ -2,9 +2,9 @@ import {useCart } from "@/context/CartContext"
 import {Button} from "@/components/ui/button"
 import { Link } from "react-router-dom";
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Sparkles, ChefHat, AlertTriangle } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import calorieIcon from "@/assets/calorie.png";
-import {X, Loader2} from "lucide-react" //pt modal
+import { Loader2 } from "lucide-react"
 
 export default function Cart()
 {
@@ -14,61 +14,31 @@ export default function Cart()
     const [isUpdating,setIsUpdating]=useState(false); //state local pentru a face butonul disabled in timpul 
     //unui request la server, ca sa nu se dea spam si sa se strice ceva.
 
-    const [showIncrementModal, setShowIncrementModal] = useState(false);
-    const [pendingItem, setPendingItem] = useState<any>(null); // Itemul la care vrem sa facem +1
-
     const totalPrice=cartItems.reduce((acc,item) => acc +item.subTotal,0);
     //pretul total din cos
 
     //FUNCTII AJUTATOARE
     
-
-    const handleIncrement=async(productId: number)=> {
-        const item=cartItems.find(x => x.productId===productId)
+    const handleIncrement = async(itemId: number) => {
+        const item = cartItems.find(x => x.id === itemId)
         if(!item) return;
-        // VERIFICARE PRAG:
-        const limit = item.nearExpiryQuantity || 0;
-
-        // 1. CAZ FRESH: Daca utilizatorul a ales deja Fresh, ignoram complet stocul redus.
-        // Doar il adaugam (cu flag-ul true ca sa ramana Fresh in DB)
-        if (item.isFresh) {
-            setIsUpdating(true);
-            await addToCart(productId, 1, true); // true explicit (fresh)
-            setIsUpdating(false);
+        
+        // LIMITAM BUTONUL DIN UI: Daca e redus si a ajuns la limita de stoc, nu mai face nimic.
+        if (!item.freshMode && item.quantity >= (item.nearExpiryQuantity || 0)) {
             return;
         }
-        // 2. caz smart (reduced)
 
-        //logica e ca modalul ar trebui sa se afiseze doar in cazul in care cantitatea+1 depaseste limita,
-        //deci cantitatea actuala e egala cu limita. 
-        //daca cantitatea e mai mare decat limita, nu e nevoie sa o gestionam pentru ca utilizatorul a fost deja informa
-        if (item.quantity === limit && limit > 0) { //daca cantitatea actuala e egala cu limita si exista o limita
-            setPendingItem(item); //itemul e setat ca urmeaza sa se modifice
-            setShowIncrementModal(true); //afisam modalul
-         return; 
-         }
-         //daca nu e cazul, adaugam cantitatea
         setIsUpdating(true);
-        await addToCart(productId, 1);
+        await addToCart(item.productId, 1, item.freshMode); // Trimitem exact starea pe care o are randul
         setIsUpdating(false);
     }
+
     const handleRemove=async(itemId: number) =>
     {
         await removeFromCart(itemId);
         //poate modal in viitor aici, acum mi-e lene
     }
 
-    const confirmIncrement = async () => {
-    if (!pendingItem) return;
-    setIsUpdating(true); 
-    //// Daca a acceptat modalul, inseamna ca trece pe Full Price (Fresh)
-        // Deci trimitem TRUE
-    await addToCart(pendingItem.productId, 1,true);
-    setIsUpdating(false);
-
-    setShowIncrementModal(false);
-    setPendingItem(null);
-};
 
     const formatUnit = (unit: string) => { //pt afisare pret / buc, litru, g, etc.
         const u = unit.toLowerCase();
@@ -121,133 +91,169 @@ export default function Cart()
                     <div className="lg:col-span-2 space-y-3">
                         {/* am folosit sortedItems pt ca inainte cand foloseam butoanele de + - se schimba
                         random ordinea la produse, asa ramane constanta */}
-                        {sortedItems.map((item) => ( 
-                            <div key={item.id} className="bg-white p-4 sm:p-6 rounded-3xl border border-gray-200 shadow-sm flex flex-col sm:flex-row gap-6 items-center hover:shadow-md transition-shadow">
-                                
-                                {/* Imaginea produsului */}
-                                <div className="w-24 h-24 bg-gray-50 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-[#134c9c]">
-                                    {item.imageUrl ? (
-                                        <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain" />
-                                    ) : (
-                                        <ShoppingBag className="text-gray-300" size={32} /> //fall back iconita shoppingback daca nu gaseste url-ul
-                                    )}
-                                </div>
+                        {sortedItems.map((item) => {
+                            
+                            // Daca e produs care expira, il stilizam diferit
+                            const isReduced = !item.freshMode && (item.nearExpiryQuantity || 0) > 0;
+                            // Verificam daca am atins limita de reduceri pentru acest rand
+                            const limitReached = isReduced && item.quantity >= (item.nearExpiryQuantity || 0);
 
-                                {/* B. Detalii produs  */}
-                                <div className="flex-1 text-center sm:text-left w-full flex flex-col justify-center h-full">
-                                    {/* Brand (mic, gri, uppercase) */}
-                                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">
-                                        {item.brandName || "Generic Brand"}
-                                    </div>
-
-                                    {/* Nume Produs */}
-                                    <h3 className="text-lg font-extrabold text-gray-900 leading-tight mb-2">
-                                        {item.productName}
-                                    </h3>
-
-                                    {/* Zona Pret, Calorii */}
-                                    <div className="flex items-center gap-3 justify-center sm:justify-start">
-                                        <div className="text-[#134c9c] font-black text-lg">
-                                            {item.pricePerUnit.toFixed(2)} 
-                                            <span className="text-sm font-bold text-gray-500 ml-1">
-                                                Lei / {item.productUnit}
-                                            </span>
+                            return ( 
+                                <div key={item.id} className={`bg-white p-4 sm:p-6 rounded-3xl border shadow-sm flex flex-col sm:flex-row gap-6 items-center hover:shadow-md transition-shadow relative overflow-hidden ${isReduced ? "border-orange-200" : "border-blue-100"}`}>
+                                    
+                                    {/* Eticheta Sus Stanga */}
+                                    {isReduced ? (
+                                        <div className="absolute top-0 left-0 bg-orange-100 text-orange-700 text-[10px] font-bold px-3 py-1 rounded-br-lg z-10 border-b border-r border-orange-200 flex items-center gap-1">
+                                            <AlertTriangle size={10} /> REDUCED
                                         </div>
+                                    ) : (
+                                        <div className="absolute top-0 left-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1 rounded-br-lg z-10 border-b border-r border-blue-200 flex items-center gap-1">
+                                            <Sparkles size={10} /> FRESH
+                                        </div>
+                                    )}
 
-                                        {/* Calorii */}
-                                        {item.calories && (
-                                            <div className="bg-orange-50 text-orange-700 text-xs ml-2 font-bold px-2 py-1 rounded-md border border-orange-100 flex items-center gap-1">
-                                                <img src={calorieIcon} alt="kcal" className="w-5 h-5 object-contain" />
-                                                {item.calories}
-                                            </div>
+                                    {/* Imaginea produsului */}
+                                    <div className="w-24 h-24 bg-gray-50 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-[#134c9c]">
+                                        {item.imageUrl ? (
+                                            <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain" />
+                                        ) : (
+                                            <ShoppingBag className="text-gray-300" size={32} /> //fall back iconita shoppingback daca nu gaseste url-ul
                                         )}
                                     </div>
-                                </div>
 
-                                {/* C. +,-,delete */}
-                               <div className="flex items-center gap-6">
-                                    <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 h-10 w-[140px]">
-                                        <button disabled className="px-3 h-full text-gray-400 cursor-not-allowed border-r border-gray-200 flex items-center justify-center hover:bg-gray-100">
-                                            <Minus size={14} />
-                                        </button>
-                                        
-                                        {/* w-full pe text ca sa ocupe spatiul ramas */}
-                                        <span className="flex-1 text-center font-bold text-gray-900 text-sm select-none">
-                                            {item.quantity}
-                                        </span>
-                                        
+                                    {/* B. Detalii produs  */}
+                                    <div className="flex-1 text-center sm:text-left w-full flex flex-col justify-center h-full">
+                                        {/* Brand (mic, gri, uppercase) */}
+                                        <div className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 mt-2 sm:mt-0">
+                                            {item.brandName || "Generic Brand"}
+                                        </div>
+
+                                        {/* Nume Produs */}
+                                        <h3 className="text-lg font-extrabold text-gray-900 leading-tight mb-2">
+                                            {item.productName}
+                                        </h3>
+
+                                        {/* Zona Pret, Calorii */}
+                                        <div className="flex items-center gap-3 justify-center sm:justify-start">
+                                            <div className="text-[#134c9c] font-black text-lg">
+                                                {item.pricePerUnit.toFixed(2)} 
+                                                <span className="text-sm font-bold text-gray-500 ml-1">
+                                                    Lei / {formatUnit(item.productUnit)}
+                                                </span>
+                                            </div>
+
+                                            {/* Calorii */}
+                                            {item.calories && (
+                                                <div className="bg-orange-50 text-orange-700 text-xs ml-2 font-bold px-2 py-1 rounded-md border border-orange-100 flex items-center gap-1">
+                                                    <img src={calorieIcon} alt="kcal" className="w-5 h-5 object-contain" />
+                                                    {item.calories}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* C. +,-,delete */}
+                                    <div className="flex items-center gap-6 mt-4 sm:mt-0 w-full sm:w-auto justify-between sm:justify-end">
+                                        <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 h-10 w-[120px] sm:w-[140px]">
+                                            <button disabled className="px-3 h-full text-gray-400 cursor-not-allowed border-r border-gray-200 flex items-center justify-center hover:bg-gray-100">
+                                                <Minus size={14} />
+                                            </button>
+                                            
+                                            {/* w-full pe text ca sa ocupe spatiul ramas */}
+                                            <span className="flex-1 text-center font-bold text-gray-900 text-sm select-none">
+                                                {item.quantity}
+                                            </span>
+                                            
+                                            <button 
+                                                onClick={() => handleIncrement(item.id)}
+                                                disabled={isUpdating || limitReached} // Se dezactiveaza daca e redus si am atins limita
+                                                className="px-3 h-full text-blue-600 hover:bg-blue-100 transition-colors border-l border-gray-200 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent"
+                                                title={limitReached ? "No more reduced items available" : ""}
+                                            >
+                                                <Plus size={14} />
+                                            </button>
+                                        </div>
+
+                                        <div className="text-right min-w-[60px] sm:min-w-[80px]">
+                                            <p className="text-xl font-black text-gray-900">
+                                                {item.subTotal.toFixed(2)} <span className="text-xs font-bold text-gray-500">LEI</span>
+                                            </p>
+                                        </div>
+
                                         <button 
-                                            onClick={() => handleIncrement(item.productId)}
-                                            disabled={isUpdating}
-                                            className="px-3 h-full text-blue-600 hover:bg-blue-100 transition-colors border-l border-gray-200 flex items-center justify-center"
+                                            onClick={() => handleRemove(item.id)}
+                                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Remove item"
                                         >
-                                            <Plus size={14} />
+                                            <Trash2 size={20} />
                                         </button>
                                     </div>
-
-                                    <div className="text-right min-w-[80px]">
-                                        <p className="text-xl font-black text-gray-900">
-                                            {item.subTotal.toFixed(2)} <span className="text-xs font-bold text-gray-500">LEI</span>
-                                        </p>
-                                    </div>
-
-                                    <button 
-                                        onClick={() => handleRemove(item.id)}
-                                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                        title="Remove item"
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
                                 </div>
-                            </div>
-                        ))}
-                      </div>
-                 </div>
-    
-                
-            </div>
-            {/* --- MODAL DE AVERTIZARE CRESTERE PRET --- */}
-            {showIncrementModal && pendingItem && (
-                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative border border-orange-100 animate-in zoom-in-95 duration-200">
-                        <button onClick={() => setShowIncrementModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                            <X size={24} />
-                        </button>
+                            );
+                        })}
 
-                        <div className="flex flex-col items-center text-center">
-                            {/* Iconita */}
-                            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4 text-orange-600">
-                                <AlertTriangle size={32} />
+                        {/* --- ZONA AI (PLACEHOLDER0 --- */}
+                        <div className="mt-12 space-y-4">
+                            {/* Recomandari */}
+                            <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 border-dashed">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <Sparkles className="text-blue-600" size={20} />
+                                    <h3 className="text-md font-bold text-blue-900">Smart Recommendations</h3>
+                                </div>
+                                <p className="text-blue-700/70 text-sm">Waiting for implementation...</p>
                             </div>
-                            
-                            <h3 className="text-xl font-black text-gray-900 mb-2">Price Change Alert</h3>
-                            <p className="text-gray-600 mb-6">
-                                You have claimed all <strong>{pendingItem.nearExpiryQuantity}</strong> reduced items for 
-                                <span className="font-bold text-gray-900 mx-1">{pendingItem.productName}</span>.
-                                <br/><br/>
-                                This extra item will be added at the <strong className="text-[#134c9c]">full price</strong>.
-                            </p>
-
-                            <div className="flex flex-col gap-3 w-full">
-                                <Button 
-                                    onClick={confirmIncrement} 
-                                    className="w-full bg-[#134c9c] hover:bg-[#1e5cad] text-white h-12 rounded-xl font-bold flex items-center justify-center gap-2"
-                                >
-                                    {isUpdating ? <Loader2 className="animate-spin" /> : "Okay, add at full price"}
-                                </Button>
-                                <Button 
-                                    variant="outline"
-                                    onClick={() => setShowIncrementModal(false)} 
-                                    className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 h-12 rounded-xl font-bold"
-                                >
-                                    Cancel
-                                </Button>
+                            {/* Retete AI */}
+                            <div className="p-6 bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl border border-orange-100 border-dashed">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <ChefHat className="text-orange-600" size={20} />
+                                    <h3 className="text-md font-bold text-orange-900">AI Chef</h3>
+                                </div>
+                                <p className="text-orange-700/70 text-sm">Waiting for implementation...</p>
                             </div>
                         </div>
+
+                      </div>
+                      
+                      {/* --- COLOANA DREAPTA: SUMAR COMANDA (Sticky) --- */}
+                    <div className="lg:col-span-1 sticky top-28">
+                        <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-xl shadow-blue-900/5">
+                            <h2 className="text-2xl font-black text-gray-900 mb-6">Order Summary</h2>
+                            
+                            <div className="space-y-4 mb-8">
+                                <div className="flex justify-between text-gray-600">
+                                    <span>Subtotal</span>
+                                    <span className="font-bold text-gray-900">{totalPrice.toFixed(2)} Lei</span>
+                                </div>
+                                <div className="flex justify-between text-gray-600">
+                                    <span>Delivery</span>
+                                    <span className="text-green-600 font-bold">Free</span>
+                                </div>
+                                <div className="flex justify-between text-gray-600">
+                                    <span>Taxes</span>
+                                    <span className="text-gray-400 text-sm">Included</span>
+                                </div>
+                                <div className="h-px bg-gray-100 my-4"></div>
+                                <div className="flex justify-between items-end">
+                                    <span className="text-lg font-bold text-gray-900">Total</span>
+                                    <span className="text-4xl font-black text-[#134c9c] tracking-tighter">
+                                        {totalPrice.toFixed(2)} <span className="text-lg text-gray-500 font-bold">LEI</span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <Link to="/checkout">
+                                <Button className="w-full h-14 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xl shadow-lg shadow-green-900/20 hover:shadow-green-900/40 transition-all flex items-center justify-center gap-2">
+                                    Proceed to Checkout <ArrowRight size={24} />
+                                </Button>
+                            </Link>
+                            
+                            <p className="text-xs text-center text-gray-400 mt-4 leading-tight">
+                                By placing the order you accept our Terms and Conditions.
+                            </p>
+                        </div>
                     </div>
-                </div>
-            )}
+                 </div>
+            </div>
         </div>
     )
-
 }
