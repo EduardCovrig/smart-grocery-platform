@@ -15,6 +15,7 @@ interface CartItem {
     brandName?: string; //optional
     calories?: string; //optional
     nearExpiryQuantity?: number; //optional
+    stockQuantity?: number; //optional
     freshMode?: boolean; //optional
 }
 
@@ -74,8 +75,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             // Dupa ce am adaugat cu succes, recitim cosul de la server ca sa fim sincronizati
             await fetchCart(); 
             console.log(`Product succesfully added. Fresh Mode: ${freshMode}`);
-        } catch (error) {
-            console.error("Error adding product to cart:", error);
+        } catch (error: any) {
+          const msg = error.response?.data?.message || "Eroare de stoc!";
+          alert(msg);
         }
     };
 

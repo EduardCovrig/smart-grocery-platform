@@ -75,7 +75,7 @@ public class CartService {
         cart.setUpdatedAt(Instant.now());
         return cart;
     }
-    //2 ADD ITEMS TO CART
+
     //2 ADD ITEMS TO CART
     public CartResponseDTO addToCart(String userEmail, AddToCartDTO dto)
     {
@@ -87,28 +87,32 @@ public class CartService {
 
         Cart cart = cartRepository.findByUserId(user.getId()).orElseGet(() -> createNewCart(user));
 
-        // 1. Cat stoc e deja in cos (la un loc: fresh + expirat)
-        int totalQuantityInCart = cart.getItems().stream()
-                .filter(x -> x.getProduct().getId().equals(productToAdd.getId()))
-                .mapToInt(CartItem::getQuantity)
-                .sum();
-
-        if (totalQuantityInCart + dto.getQuantity() > productToAdd.getStockQuantity()) {
-            throw new RuntimeException("Stoc insuficient in magazin pentru aceasta cantitate!");
-        }
-
         // Preluam variabila corecta: freshMode
         boolean isRequestingFresh = Boolean.TRUE.equals(dto.getFreshMode());
 
-        // Daca cere REDUCED, ne asiguram ca nu depaseste limita nearExpiryQuantity
+        // LIMITA STRICTA SEPARATA (FRESH vs REDUCED)
         if (!isRequestingFresh) {
+            // Verificam limita pentru REDUCED
             int reducedInCart = cart.getItems().stream()
                     .filter(x -> x.getProduct().getId().equals(productToAdd.getId()) && !Boolean.TRUE.equals(x.getIsFreshSelected()))
+                    //Boolean.TRUE.equals e true daca x.getIsFresh e egal cu Boolean.TRUE, deci evita situatia de null
                     .mapToInt(CartItem::getQuantity)
                     .sum();
 
             if (reducedInCart + dto.getQuantity() > productToAdd.getNearExpiryQuantity()) {
-                throw new RuntimeException("Nu poti adauga mai multe produse la reducere decat stocul disponibil!");
+                throw new RuntimeException("Stoc insuficient! Ai atins limita produselor la reducere.");
+            }
+        } else {
+            // Verificam limita pentru FRESH
+            int freshInCart = cart.getItems().stream()
+                    .filter(x -> x.getProduct().getId().equals(productToAdd.getId()) && Boolean.TRUE.equals(x.getIsFreshSelected()))
+                    .mapToInt(CartItem::getQuantity)
+                    .sum();
+
+            int availableFreshStock = productToAdd.getStockQuantity() - productToAdd.getNearExpiryQuantity();
+
+            if (freshInCart + dto.getQuantity() > availableFreshStock) {
+                throw new RuntimeException("Stoc insuficient! Ai atins limita produselor proaspete.");
             }
         }
 

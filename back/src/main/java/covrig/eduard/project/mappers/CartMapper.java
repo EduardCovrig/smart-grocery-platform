@@ -35,6 +35,7 @@ public abstract class CartMapper {
     @Mapping(source = "product.brand.name", target = "brandName")
     @Mapping(target = "calories", expression = "java(getCalories(item.getProduct()))")
     @Mapping(source = "product.nearExpiryQuantity", target = "nearExpiryQuantity")
+    @Mapping(source = "product.stockQuantity", target = "stockQuantity") //stoc global
     @Mapping(source = "isFreshSelected", target = "freshMode")
    public abstract CartItemResponseDTO toItemDto(CartItem item);
     //metoda asta se foloseste automat de catre spring in toDto de mai sus ca sa transforme fiecare cartItem in CartItemResponseDTO

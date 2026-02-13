@@ -3,7 +3,7 @@ import { useParams, Navigate, Link } from "react-router-dom";
 import axios from "axios";
 import { Product } from "@/types";
 import { Button } from "@/components/ui/button";
-import { ShoppingBasket, Loader2, ShieldCheck, AlertTriangle, Plus, Minus, Clock, CheckCircle2 } from "lucide-react";
+import { ShoppingBasket, Loader2, ShieldCheck, Plus, Minus, Clock, CheckCircle2, Hourglass } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 
 export default function ProductDetails() {
@@ -55,32 +55,51 @@ export default function ProductDetails() {
         fetchProduct();
     }, [id]);
 
+    // --- FUNCTIE PENTRU UNITATI (NOU) ---
+    // Returneaza ce sa scrie langa pret si ce sa scrie la tabelul nutritional
+    const getDisplayUnits = (unit: string | undefined) => {
+        if (!unit) return { priceUnit: 'buc', nutritionUnit: '100g' };
+        
+        const u = unit.toLowerCase().trim();
+        
+        // Daca in DB e lichid (L, ml), il vindem la BUCATA (o sticla), 
+        // dar tabelul nutritional e pe 100ml.
+        if (u === 'l' || u === 'ml' || u === 'litru' || u === 'litri') {
+            return { priceUnit: 'buc', nutritionUnit: '100ml' };
+        }
+        
+        // Daca in DB e la kg, vrem sa afisam pretul per 100g, 
+        // iar tabelul ramane pe 100g.
+        if (u === 'kg' || u === 'kilogram' || u === 'g' || u === 'gr' || u === 'grame') {
+             return { priceUnit: '100g', nutritionUnit: '100g' };
+        }
+        
+        // Orice altceva (paine, ciocolata) e la bucata si tabel la 100g.
+        return { priceUnit: 'buc', nutritionUnit: '100g' };
+    };
+
+    const { nutritionUnit } = getDisplayUnits(product?.unitOfMeasure);
+
     // --- LOGICA DE STOCURI (SEPARARE STRICTA) ---
-    // Cautam cate produse REDUSE avem deja in cos
     const cartItemReduced = cartItems.find(item => Number(item.productId) === Number(product?.id) && !item.freshMode);
     const quantityInCartReduced = cartItemReduced ? cartItemReduced.quantity : 0;
 
-    // Cautam cate produse FRESH avem deja in cos
     const cartItemFresh = cartItems.find(item => Number(item.productId) === Number(product?.id) && item.freshMode);
     const quantityInCartFresh = cartItemFresh ? cartItemFresh.quantity : 0;
 
-    // Calculam stocurile separate
     const expiringStockTotal = product?.nearExpiryQuantity || 0;
     const remainingReducedStock = Math.max(0, expiringStockTotal - quantityInCartReduced);
     
     const freshStockTotal = (product?.stockQuantity || 0) - expiringStockTotal;
     const remainingFreshStock = Math.max(0, freshStockTotal - quantityInCartFresh);
     
-    // Logica Out of Stock pe variante
     const isReducedOutOfStock = remainingReducedStock <= 0;
     const freshModeOutOfStock = remainingFreshStock <= 0;
 
-    // Limita max pentru butonul +
     const maxQuantityForCurrentMode = buyingMode === 'reduced' 
         ? remainingReducedStock 
         : remainingFreshStock;
 
-    // Resetam cantitatea cand schimbam tab-ul
     const handleTabChange = (mode: 'reduced' | 'fresh') => {
         setBuyingMode(mode);
         setQuantity(1);
@@ -96,29 +115,17 @@ export default function ProductDetails() {
         }
     };
 
-    // --- HANDLER PRINCIPAL ADD TO CART ---
     const handleAddToCartClick = () => {
         if (!product) return;
-
-        //CAZ 2 
-
         const freshModeMode = buyingMode === 'fresh';
         finalizeAddToCart(quantity, freshModeMode);
     };
 
     const finalizeAddToCart = async (qtyToAdd: number, freshModeMode: boolean=false ) => {
        if (!product) return;
-
-        // 1. Activam loading-ul
         setIsAddingToCart(true);
-
-        // 2. Asteptam scurt (efect vizual)
         await new Promise(resolve => setTimeout(resolve, 300));
-
-        // Trimitem datele si preferinta (true/false) catre Context -> Backend
         await addToCart(product.id, qtyToAdd, freshModeMode);
-
-        //Resetam starile
         setIsAddingToCart(false);
         setQuantity(1);
     };
@@ -183,7 +190,10 @@ export default function ProductDetails() {
 
                         {/* Nutritional Values */}
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900 mb-3 border-b pb-2">Nutritional Values (100g):</h3>
+                            {/* NOU: Aici folosim valoarea calculata in functie de lichid/solid */}
+                            <h3 className="text-lg font-bold text-gray-900 mb-3 border-b pb-2">
+                                Nutritional Values ({nutritionUnit}):
+                            </h3>
                             {product.attributes && Object.keys(product.attributes).length > 0 ? (
                                 <div className="space-y-2">
                                     {Object.entries(product.attributes).map(([key, value]) => (
@@ -209,7 +219,6 @@ export default function ProductDetails() {
                       {/* --- ZONA DE CUMPARARE DUALA --- */}
                         <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 flex flex-col gap-6 relative overflow-hidden">
                             
-                            {/* 1. TABS PENTRU SELECTIE MOD (Apar DOAR daca avem stoc pe duca) */}
                             {hasExpiryStock && (
                                 <div className="flex bg-gray-200 p-1 rounded-lg mb-2">
                                     <button 
@@ -221,7 +230,7 @@ export default function ProductDetails() {
                                             : "text-gray-500 hover:text-gray-700 disabled:opacity-50"
                                         }`}
                                     >
-                                        <AlertTriangle size={16} />
+                                        <Hourglass size={16} />
                                         Reduced (Expiring)
                                     </button>
                                     <button 
@@ -239,11 +248,8 @@ export default function ProductDetails() {
                                 </div>
                             )}
 
-                            {/* 2. PRET SI SELECTOR */}
                             <div className="flex items-end justify-between w-full">
-                                {/* Zona Pret */}
                                 <div>
-                                    {/* LOGICA NOUA DE AFISARE PRET */}
                                     {(buyingMode === 'reduced' && product.hasActiveDiscount) || (!hasExpiryStock && product.hasActiveDiscount) ? (
                                         <>
                                             <div className={`text-4xl font-black tracking-tighter ${hasExpiryStock ? "text-orange-600" : "text-red-600"}`}>
@@ -251,7 +257,6 @@ export default function ProductDetails() {
                                             </div>
                                             <span className="text-sm text-gray-400 line-through">was {product.price.toFixed(2)} Lei</span>
                                             
-                                            {/* Mesaj specific in functie de tipul reducerii */}
                                             {hasExpiryStock ? (
                                                 <p className="text-xs text-orange-600 mt-1 font-bold">Expires soon!</p>
                                             ) : (
@@ -259,7 +264,6 @@ export default function ProductDetails() {
                                             )}
                                         </>
                                     ) : (
-                                        /* CAZUL PRET INTREG (Fresh Tab sau Produs fara nicio reducere) */
                                         <>
                                             <div className="text-4xl font-black tracking-tighter text-gray-900">
                                                 {product.price.toFixed(2)}<span className="text-lg font-bold ml-1">LEI</span>
@@ -269,7 +273,6 @@ export default function ProductDetails() {
                                     )}
                                 </div>
 
-                                {/* Selector Cantitate */}
                                 <div className={`flex items-center gap-3 bg-white px-3 py-2 rounded-lg border border-gray-200 shadow-sm ${(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && freshModeOutOfStock) ? "opacity-50 pointer-events-none" : ""}`}>
                                     <button onClick={handleDecrease} disabled={quantity <= 1} className="p-2 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-50">
                                         <Minus size={18} strokeWidth={3} />
@@ -281,7 +284,6 @@ export default function ProductDetails() {
                                 </div>
                             </div>
 
-                            {/* 3. BUTON ADD TO CART */}
                             <Button 
                                 onClick={handleAddToCartClick}
                                 disabled={(buyingMode === 'reduced' && isReducedOutOfStock) || (buyingMode === 'fresh' && freshModeOutOfStock) || isAddingToCart}

@@ -24,6 +24,7 @@ public class CartItemResponseDTO {
     private String brandName;
     private String calories; //se extrage din atribute direct caloriile in mapper cu getCalories()
     private Integer nearExpiryQuantity; //pt interfata cart, sa afisam modal daca cand mareste cantitatea depaseste
+    private Integer stockQuantity; //stoc global
 
     private Boolean freshMode; //fresh sau expira soon
 }

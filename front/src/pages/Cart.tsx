@@ -24,7 +24,14 @@ export default function Cart()
         if(!item) return;
         
         // LIMITAM BUTONUL DIN UI: Daca e redus si a ajuns la limita de stoc, nu mai face nimic.
-        if (!item.freshMode && item.quantity >= (item.nearExpiryQuantity || 0)) {
+        // PENTRU FRESH: Calculam limita din stocul total minus ce e expirat
+        const expiringStockTotal = item.nearExpiryQuantity || 0;
+        const freshStockTotal = (item.stockQuantity || 0) - expiringStockTotal;
+
+        if (!item.freshMode && item.quantity >= expiringStockTotal) {
+            return;
+        }
+        if (item.freshMode && item.quantity >= freshStockTotal) {
             return;
         }
 
@@ -39,14 +46,29 @@ export default function Cart()
         //poate modal in viitor aici, acum mi-e lene
     }
 
-
-    const formatUnit = (unit: string) => { //pt afisare pret / buc, litru, g, etc.
-        const u = unit.toLowerCase();
-        if (u === 'g' || u === 'gr' || u === 'gram') return '100g';
-        if (u === 'ml') return '100ml';
-        if (u === 'l' || u === 'litru') return 'Litru';
-        if (u === 'buc' || u === 'bucata') return 'buc';
-        return unit; // fallback in caz de nu respecta nimic
+    // --- FUNCTIE INTELIGENTA PENTRU UNITATI ---
+    // Returneaza ce sa scrie langa pret si ce sa scrie langa calorii
+    const getDisplayUnits = (unit: string | undefined) => { 
+        if (!unit) return { priceUnit: 'buc', nutritionUnit: '100g' };
+        
+        const u = unit.toLowerCase().trim();
+        
+        // Daca in db e lichid, il afisam la bucata (o sticla), dar tabelul ramane la 100ml
+        if (u === 'l' || u === 'ml' || u === 'litru' || u === 'litri') {
+            return { priceUnit: 'buc', nutritionUnit: '100ml' };
+        }
+        
+        // Daca in db e solid vrac, pretul este per 100g
+        if (u === 'g' || u === 'gr' || u === 'gram' || u === 'kg' || u === 'kilogram') {
+             return { priceUnit: '100g', nutritionUnit: '100g' }; 
+        }
+        
+        // Orice altceva e la bucata, iar caloriile la 100g
+        if (u === 'buc' || u === 'bucata') {
+            return { priceUnit: 'buc', nutritionUnit: '100g' };
+        }
+        
+        return { priceUnit: unit, nutritionUnit: '100g' }; // fallback
     };
 
     // Cos gol (varianta simpla de UI)
@@ -82,7 +104,7 @@ export default function Cart()
                 {/* 1. HEADER */}
                 <h1 className="text-3xl font-black text-gray-900 mb-8 flex items-center gap-3">
                     Shopping Cart
-                    <span className="text-lg font-medium text-gray-500 bg-white border-gray-200 px-3 py-1 rounded-full">{cartItems.length} items</span>
+                    <span className="text-lg font-medium text-gray-500 bg-white border-gray-200 px-3 py-1 rounded-full hover:bg-gray-500 hover:text-white transition-colors duration-300">{cartItems.length} items</span>
                 </h1>
                 {/* 2. Grid-ul Principal stanga: produse, dreapta: total */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
@@ -95,19 +117,28 @@ export default function Cart()
                             
                             // Daca e produs care expira, il stilizam diferit
                             const isReduced = !item.freshMode && (item.nearExpiryQuantity || 0) > 0;
+                            
                             // Verificam daca am atins limita de reduceri pentru acest rand
-                            const limitReached = isReduced && item.quantity >= (item.nearExpiryQuantity || 0);
+                            const expiringStockTotal = item.nearExpiryQuantity || 0;
+                            const freshStockTotal = (item.stockQuantity || 0) - expiringStockTotal;
+                            
+                            const limitReached = isReduced 
+                                ? item.quantity >= expiringStockTotal 
+                                : item.quantity >= freshStockTotal;
+
+                            // Aplicam functia aici pentru afisarea unitatii corecte
+                            const { priceUnit, nutritionUnit } = getDisplayUnits(item.productUnit);
 
                             return ( 
                                 <div key={item.id} className={`bg-white p-4 sm:p-6 rounded-3xl border shadow-sm flex flex-col sm:flex-row gap-6 items-center hover:shadow-md transition-shadow relative overflow-hidden ${isReduced ? "border-orange-200" : "border-blue-100"}`}>
                                     
                                     {/* Eticheta Sus Stanga */}
                                     {isReduced ? (
-                                        <div className="absolute top-0 left-0 bg-orange-100 text-orange-700 text-[10px] font-bold px-3 py-1 rounded-br-lg z-10 border-b border-r border-orange-200 flex items-center gap-1">
+                                        <div className="absolute top-0 left-0 bg-orange-100 text-orange-700 text-[10px] font-bold px-3 py-1/2 rounded-br-xl z-10 border-b border-r border-orange-500 flex items-center gap-1">
                                             <AlertTriangle size={10} /> REDUCED
                                         </div>
                                     ) : (
-                                        <div className="absolute top-0 left-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1 rounded-br-lg z-10 border-b border-r border-blue-200 flex items-center gap-1">
+                                        <div className="absolute top-0 left-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1/2 rounded-br-xl z-10 border-b border-r border-blue-500 flex items-center gap-1">
                                             <Sparkles size={10} /> FRESH
                                         </div>
                                     )}
@@ -138,7 +169,7 @@ export default function Cart()
                                             <div className="text-[#134c9c] font-black text-lg">
                                                 {item.pricePerUnit.toFixed(2)} 
                                                 <span className="text-sm font-bold text-gray-500 ml-1">
-                                                    Lei / {formatUnit(item.productUnit)}
+                                                    Lei / {priceUnit}
                                                 </span>
                                             </div>
 
@@ -146,7 +177,7 @@ export default function Cart()
                                             {item.calories && (
                                                 <div className="bg-orange-50 text-orange-700 text-xs ml-2 font-bold px-2 py-1 rounded-md border border-orange-100 flex items-center gap-1">
                                                     <img src={calorieIcon} alt="kcal" className="w-5 h-5 object-contain" />
-                                                    {item.calories}
+                                                    {item.calories} / {nutritionUnit}
                                                 </div>
                                             )}
                                         </div>
@@ -168,7 +199,7 @@ export default function Cart()
                                                 onClick={() => handleIncrement(item.id)}
                                                 disabled={isUpdating || limitReached} // Se dezactiveaza daca e redus si am atins limita
                                                 className="px-3 h-full text-blue-600 hover:bg-blue-100 transition-colors border-l border-gray-200 flex items-center justify-center disabled:opacity-30 disabled:hover:bg-transparent"
-                                                title={limitReached ? "No more reduced items available" : ""}
+                                                title={limitReached ? "Out of stock for this category" : ""}
                                             >
                                                 <Plus size={14} />
                                             </button>
@@ -192,7 +223,7 @@ export default function Cart()
                             );
                         })}
 
-                        {/* --- ZONA AI (PLACEHOLDER0 --- */}
+                        {/* --- ZONA AI (PLACEHOLDER) --- */}
                         <div className="mt-12 space-y-4">
                             {/* Recomandari */}
                             <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 border-dashed">
@@ -229,7 +260,7 @@ export default function Cart()
                                     <span className="text-green-600 font-bold">Free</span>
                                 </div>
                                 <div className="flex justify-between text-gray-600">
-                                    <span>Taxes</span>
+                                    <span>Taxes & TVA </span>
                                     <span className="text-gray-400 text-sm">Included</span>
                                 </div>
                                 <div className="h-px bg-gray-100 my-4"></div>
