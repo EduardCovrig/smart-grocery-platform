@@ -19,6 +19,7 @@ interface CartContextType {
     cartItems: CartItem[];
     cartCount: number;      // Numarul total de produse (pt bulina rosie de pe navbar)
     addToCart: (productId: number, quantity: number) => Promise<void>;
+    removeFromCart: (itemId: number) => Promise<void>;
     fetchCart: () => Promise<void>; // refresh cart manual
 }
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -79,6 +80,25 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         fetchCart();
     }, [isAuthenticated, token]);
 
+    //3. REMOVE FROM CART
+    const removeFromCart=async (itemId: number) =>
+    {
+        if(!isAuthenticated || !token) return;
+        try{
+            const apiUrl=import.meta.env.VITE_API_URL;
+            await axios.delete(`${apiUrl}/cart/items/${itemId}`,
+                {
+                    headers: { Authorization: `Bearer ${token}`}
+                }
+            )
+            await fetchCart(); //refresh cart
+        }
+        catch(err)
+        {
+            console.error("error removing item from cart:",err);
+        }
+    }   
+
     // Calculam cate produse sunt in total (pentru Navbar)
     const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
 
@@ -87,7 +107,8 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             cartItems, 
             cartCount, 
             addToCart, 
-            fetchCart 
+            fetchCart,
+            removeFromCart
         }}>
             {children}
         </CartContext.Provider>
