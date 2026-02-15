@@ -61,7 +61,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 
                 {/* BADGE CLEARANCE ACTIVE (Pus in dreapta sus) */}
                 {hasReduced && (
-                    <div className="absolute top-2 right-2 bg-orange-100 text-orange-700 px-2 py-1 rounded-md font-bold text-[10px] flex items-center gap-1 border border-orange-200 z-10 shadow-sm">
+                    <div className="absolute top-2 right-2 bg-orange-100 text-orange-700 px-2 py-1 rounded-md font-bold text-[10px] flex items-center gap-1 border border-orange-200 z-20 shadow-sm">
                         <Clock size={12} />
                         Clearance
                     </div>

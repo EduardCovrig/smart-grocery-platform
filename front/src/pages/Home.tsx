@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import { Product } from "@/types"
 import ProductCard from "@/components/ProductCard";
-import { Loader2, SearchX, Store } from "lucide-react";
+import { ArrowUpDown, Loader2, SearchX, Store } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -39,6 +39,18 @@ export default function Home() {
         }
         fetchProducts();
     },[currentCategory]) //de fiecare data cand se schimba categoria din url
+
+    const sortedProducts = [...products].sort((a, b) => { //sortare produse intern doar pe front, 
+    // fara a face request nou la backend pt a fi mai optim si mai rapid.
+        if (sortOrder === "price-asc") {
+            return a.currentPrice - b.currentPrice;
+        } else if (sortOrder === "price-desc") {
+            return b.currentPrice - a.currentPrice;
+        } else if (sortOrder === "name-asc") {
+            return a.name.localeCompare(b.name);
+        }
+        return 0; // "none"
+    });
 
     if (isLoading) {
         return (
@@ -91,10 +103,31 @@ export default function Home() {
                 </p>
             </div>
             <div className="max-w-[1600px] mx-auto px-2 py-8">
-                <h2 className="text-3xl font-black text-blue-900 mb-8 tracking-tight">Best Offers</h2>
+                {/* SORTARE */}
+                    <div className="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
+                        <h2 className="text-2xl font-black text-blue-900 tracking-tight">
+                            {currentCategory ? `${currentCategory}` : "Best Offers"}
+                        </h2>
+
+                        <div className="flex items-center gap-2">
+                            <ArrowUpDown size={16} className="text-gray-500" />
+                            <span className="text-sm font-bold uppercase tracking-wider">Sort by:</span>
+                            <select
+                                value={sortOrder}
+                                onChange={(e) => setSortOrder(e.target.value)}
+                                className="bg-gray-50 border border-gray-300 shadow-md text-gray-900 text-sm 
+                                rounded-xl hover:border-[#134c9c] focus: outline-none block p-2 text-center cursor-pointer min-w-[160px] duration-300 transition-colors"
+                            >
+                                <option value="none">Recommended</option>
+                                <option value="price-asc">Price: Low to High</option>
+                                <option value="price-desc">Price: High to Low</option>
+                                <option value="name-asc">Name: A to Z</option>
+                            </select>
+                        </div>
+                    </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                    {products.map((product) => (
+                    {sortedProducts.map((product) => (
                         <ProductCard key={product.id} product={product} />
                     ))}
                 </div>

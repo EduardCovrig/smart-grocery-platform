@@ -187,7 +187,7 @@ export default function Cart()
                                     {/* C. +,-,delete */}
                                     <div className="flex items-center gap-6 mt-4 sm:mt-0 w-full sm:w-auto justify-between sm:justify-end">
                                         <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 h-10 w-[120px] sm:w-[140px]">
-                                            <button disabled className="px-3 h-full text-gray-400 cursor-not-allowed border-r border-gray-200 flex items-center justify-center hover:bg-gray-100">
+                                            <button disabled className="px-3 h-full text-gray-400 cursor-not-allowed border-r border-gray-200 flex items-center justify-center transition-all hover:bg-gray-100">
                                                 {/* to do later, disable for now */}
                                                 <Minus size={14} />
                                             </button>
