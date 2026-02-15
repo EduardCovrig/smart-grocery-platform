@@ -3,27 +3,42 @@ import axios from "axios"
 import { Product } from "@/types"
 import ProductCard from "@/components/ProductCard";
 import { Loader2 } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
     const [products, setProducts] = useState<Product[]>([]); //lista de produse, initial goala
     const [isLoading, setIsLoading] = useState(true);        //initial se incarca
     const [error, setError] = useState<string | null>(null); //eroare, initial fara.
 
+    const [searchParams]=useSearchParams(); //pentru a citi parametrii din url, ex ?category=, etc.
+    const currentCategory=searchParams.get("category"); //extragerea categoriei din url, daca exista
+
+    // State pentru sortare
+    const [sortOrder, setSortOrder] = useState<string>("none");
+
     useEffect(() => {
         const fetchProducts = async () => {
             try {
+                setIsLoading(true);
                 const apiUrl = import.meta.env.VITE_API_URL;
-                const response = await axios.get(`${apiUrl}/products`);
+     
+                let requestUrl=`${apiUrl}/products`;
+                if(currentCategory) // daca s-a dat o categorie in url, adaugam la request
+                {
+                    requestUrl+=`/filter?category=${encodeURIComponent(currentCategory)}`;
+                }
+                const response = await axios.get(requestUrl);
                 setProducts(response.data);
             }
             catch (err) {
                 console.error(err);
-                setError("It looks like someone stole all our food! Don't worry, we are working to get it back...");
+                setError("It seems we can't load the products right now. Please try again later.");
             }
             finally { setIsLoading(false); }
         }
         fetchProducts();
-    }, []) //doar la mount
+    },[currentCategory]) //de fiecare data cand se schimba categoria din url
 
     if (isLoading) {
         return (
@@ -39,6 +54,22 @@ export default function Home() {
             <p className="text-gray-500 text-4xl">{error}</p>
         </div>
     );
+
+    // cazul in care backendul merge, dar nu avem produse.
+    if(products.length===0)
+    {
+        return (
+            <div className="min-h-[23vh] flex flex-col items-center justify-center gap-10 mt-20">
+                    <p className="text-gray-500 text-xl">We are out of these types of products. Try searching for something else.</p>
+                    <Link to='/'>
+                    <Button className="h-12 px-8 rounded-full bg-[#134c9c] hover:bg-[#1e5cad]
+                    text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all mb-20">
+                        Search for your favourite groceries
+                    </Button>
+                </Link>
+                </div>
+        )
+    }
     return (
         <div className="min-h-screen bg-gray-50">
         <div className="max-w-screen-2xl mx-auto px-4 py-10">
@@ -59,13 +90,6 @@ export default function Home() {
                     ))}
                 </div>
             </div>
-            {/* cazul in care backendul merge, dar nu avem produse */}
-            {products.length === 0 && (
-                <div className="text-center py-20 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                    <p className="text-gray-500 text-lg">We are out of these types of products. Try searching for something else.</p>
-                </div>
-            )}
-
         </div>
         </div>  
     )

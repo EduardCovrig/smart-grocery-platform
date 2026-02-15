@@ -101,7 +101,9 @@ export default function Navbar() {
                             {categories.map((c) => (
                                 <Link 
                                     key={c.id} 
-                                    to={`/?category=${c.name}`}
+                                    to={`/?category=${encodeURIComponent(c.name)}`} 
+                               
+                                    // transforma & in %26.
                                     onClick={() => setIsMenuOpen(false)}
                                     className="group flex flex-col items-center gap-3 rounded-xl transition-colors"
                                 >
