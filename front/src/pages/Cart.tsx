@@ -4,13 +4,12 @@ import { Link } from "react-router-dom";
 import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Sparkles, ChefHat, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import calorieIcon from "@/assets/calorie.png";
-import { Loader2 } from "lucide-react"
 
 export default function Cart()
 {
     {/* return <div className="px-10 text-2xl font-bold">Aici e cart-ul</div> */}
 
-    const {cartItems, addToCart, fetchCart, removeFromCart}=useCart(); //extragere date din context
+    const {cartItems, addToCart, removeFromCart}=useCart(); //extragere date din context
     const [isUpdating,setIsUpdating]=useState(false); //state local pentru a face butonul disabled in timpul 
     //unui request la server, ca sa nu se dea spam si sa se strice ceva.
 
@@ -144,9 +143,9 @@ export default function Cart()
                                     )}
 
                                     {/* Imaginea produsului */}
-                                    <div className="w-24 h-24 bg-gray-50 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-[#134c9c]">
+                                    <div className="min-w-16 h-24 bg-gray-50 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden border border-[#134c9c]">
                                         {item.imageUrl ? (
-                                            <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain" />
+                                            <img src={item.imageUrl} alt={item.productName} className="h-full object-contain" />
                                         ) : (
                                             <ShoppingBag className="text-gray-300" size={32} /> //fall back iconita shoppingback daca nu gaseste url-ul
                                         )}
@@ -187,6 +186,7 @@ export default function Cart()
                                     <div className="flex items-center gap-6 mt-4 sm:mt-0 w-full sm:w-auto justify-between sm:justify-end">
                                         <div className="flex items-center justify-between border border-gray-200 rounded-lg bg-gray-50 h-10 w-[120px] sm:w-[140px]">
                                             <button disabled className="px-3 h-full text-gray-400 cursor-not-allowed border-r border-gray-200 flex items-center justify-center hover:bg-gray-100">
+                                                {/* to do later, disable for now */}
                                                 <Minus size={14} />
                                             </button>
                                             
