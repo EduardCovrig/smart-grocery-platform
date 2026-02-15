@@ -1,16 +1,26 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { ShoppingCart, User, Search, LogOut } from "lucide-react" //iconitele
+import { ShoppingCart, User, Search, LogOut, ChevronDown, Grid3X3 } from "lucide-react" //iconitele
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import {useState,useEffect} from "react"
 import { Button } from "./ui/button";
+import axios from "axios"
+
+interface Category {
+    id: number;
+    name: string;
+}
 
 export default function Navbar() {
     const location = useLocation(); //pentru a afla pe ce pagina suntem acum.
     const navigate = useNavigate();
     const { user, logout, isAuthenticated } = useAuth();
+
     const { cartCount } = useCart();
     const [isBumping, setIsBumping] = useState(false); //state animatie bulina rosie cart
+
+    const [categories, setCategories] = useState<Category[]>([]); //categoriile preluate din backend
+    const [isMenuOpen, setIsMenuOpen] = useState(false); //state pentru dropdown menu
     useEffect(() => {
         if (cartCount === 0) return; // Nu animam la incarcarea initiala daca e 0
 
@@ -23,6 +33,29 @@ export default function Navbar() {
 
         return () => clearTimeout(timer); 
     }, [cartCount]);
+
+
+    // effect pentru preluarea categoriilor din backend
+    useEffect(() => 
+    {
+        const fetchCategories= async () => {
+            try {
+                const apiUrl=import.meta.env.VITE_API_URL;
+                const response=await axios.get(`${apiUrl}/categories`);
+                setCategories(response.data);
+            }
+            catch(err)
+            {
+                console.error("Error fetching categories:", err);
+            }
+        }
+        fetchCategories();
+    },[]); //doar o data, la inceput
+
+    const getCategoryImagePath = (name: string) => { // Dairy & Eggs -> dairy-and-eggs.jpg
+        const fileName = name.toLowerCase().replace(/ & /g, '-and-').replace(/\s+/g, '-'); 
+        return `/categories/${fileName}.jpg`;
+    };
 
     // --- LOGICA DE AFISARE NUME ---
     const firstName = user?.firstName || "";
@@ -42,11 +75,55 @@ export default function Navbar() {
         return null;
     return (
         <nav className="relative flex items-center justify-between px-8 py-4 bg-white border-b border-gray-200">
-            {/* ZONA 1: LOGO (Stanga) */}
-            <div className="z-10">
+            {/* ZONA 1: LOGO & MENU CATEGORII (Stanga) */}
+            <div className="flex  gap-10 items-center z-50">
                 <Link to="/" className="text-2xl font-bold text-[#134c9c] hover:text-blue-900">
                     EdwC Store
                 </Link>
+                <div 
+                    className="relative hidden lg:block"
+                    onMouseEnter={() => setIsMenuOpen(true)}
+                    onMouseLeave={() => setIsMenuOpen(false)}
+                >
+                    <button className="flex items-center gap-2 text-gray-600 hover:text-[#134c9c] font-bold py-2">
+                        <Grid3X3 size={23} />
+                        Products
+                        <ChevronDown size={16} className={`transition-transform duration-500 ${isMenuOpen ? "rotate-180" : ""}`}/>
+                        {/* animatie pt hover sageata */}
+                    </button>
+
+                    {/* MEGA-MENU DROPDOWN */}
+                    <div className={`absolute top-full left-0 w-[470px] bg-white border border-gray-150 shadow-2xl shadow-blue-900/30 rounded-2xl p-6 transition-all duration-300 origin-top-left 
+                        ${isMenuOpen ? "opacity-100 scale-100 visible" : "opacity-0 scale-95 invisible"}`}>
+                        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 border-b pb-2">Browse Categories</h3>
+                        
+                        <div className="grid grid-cols-3 gap-y-6 gap-x-4">
+                            {categories.map((c) => (
+                                <Link 
+                                    key={c.id} 
+                                    to={`/?category=${c.name}`}
+                                    onClick={() => setIsMenuOpen(false)}
+                                    className="group flex flex-col items-center gap-3 rounded-xl transition-colors"
+                                >
+                                    {/* Poza Categoriei */}
+                                    <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-50 border-2 border-gray-100 group-hover:border-[#134c9c] group-hover:shadow-md transition-all duration-300 flex items-center justify-center">
+                                        <img 
+                                            src={getCategoryImagePath(c.name)} 
+                                            alt={c.name} 
+                                            className="w-full h-full object-cover scale-100 group-hover:scale-110 transition-transform duration-500"
+                                            //fallback daca nu gaseste poza
+                                            onError={(e) => { e.currentTarget.src = "https://placehold.co/100x100?text=+" }}
+                                        />
+                                    </div>
+                                    {/* Numele Categoriei */}
+                                    <span className="text-sm font-bold text-gray-700 group-hover:text-[#134c9c] text-center leading-tight">
+                                        {c.name}
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </div>
             {/* ZONA 2: SEARCH BAR (Centru) */}
             <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-xl px-4"> {/* hidden pe ecranele mici, dar pe cele medii in sus se afiseaza flex */}

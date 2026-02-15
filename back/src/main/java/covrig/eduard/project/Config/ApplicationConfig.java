@@ -35,7 +35,8 @@ public class ApplicationConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService());
+        authProvider.setUserDetailsService(userDetailsService()); //to change for springboo4, give userdetailsservice dirrectly into the constructor.
+        //function setuserdetailsservice wont exist anymore in spring boot 4
         authProvider.setPasswordEncoder(passwordEncoder());
         return authProvider;
     }
