@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import { Product } from "@/types"
 import ProductCard from "@/components/ProductCard";
-import { Loader2 } from "lucide-react";
+import { Loader2, SearchX, Store } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -59,12 +59,21 @@ export default function Home() {
     if(products.length===0)
     {
         return (
-            <div className="min-h-[23vh] flex flex-col items-center justify-center gap-10 mt-20">
-                    <p className="text-gray-500 text-xl">We are out of these types of products. Try searching for something else.</p>
-                    <Link to='/'>
-                    <Button className="h-12 px-8 rounded-full bg-[#134c9c] hover:bg-[#1e5cad]
-                    text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all mb-20">
-                        Search for your favourite groceries
+            <div className="min-h-[93vh] flex flex-col items-center text-center justify-center bg-gray-50">
+                <div className="p-8 bg-white rounded-full mb-6 shadow-sm hover:bg-gray-800 transition-colors duration-400 group">
+                    <SearchX size={64} className="text-gray-300 group-hover:text-white transition-colors" />
+                </div>
+                <h1 className="font-black text-4xl text-gray-900 mb-5">
+                    No products found!
+                </h1>
+               <div className="text-gray-500 mb-8 max-w-lg">
+                    <p className="mb-0">It looks like we are currently out of stock for <strong className="text-[#134c9c]">{currentCategory}</strong>.</p>
+                    <p>Try exploring other <strong className="text-[#1c7d1c]">fresh</strong> categories!</p>
+                </div>
+                <Link to='/'>
+                    <Button className="h-12 px-8 rounded-full bg-[#134c9c] hover:bg-[#1e5cad] text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all mb-20">
+                        <Store size={22} />
+                        View all products
                     </Button>
                 </Link>
                 </div>

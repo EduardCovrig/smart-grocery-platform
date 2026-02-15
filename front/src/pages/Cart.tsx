@@ -1,7 +1,7 @@
 import {useCart } from "@/context/CartContext"
 import {Button} from "@/components/ui/button"
 import { Link } from "react-router-dom";
-import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Sparkles, ChefHat, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, Minus, ArrowRight, ShoppingBag, Sparkles, ChefHat, AlertTriangle, Store } from "lucide-react";
 import { useState } from "react";
 import calorieIcon from "@/assets/calorie.png";
 
@@ -75,18 +75,20 @@ export default function Cart()
     {
         return (
             <div className="min-h-[93vh] flex flex-col items-center justify-center text-center bg-gray-50">
-                <div className="p-8 bg-white rounded-full mb-6 shadow-sm hover:bg-gray-800 transition-colors duration-400">
-                    <ShoppingBag size={64} className="text-gray-300"/>
+                <div className="p-8 bg-white rounded-full mb-6 shadow-sm hover:bg-gray-800 transition-colors duration-400 group">
+                    <ShoppingBag size={64} className="text-gray-300 group-hover:text-white"/>
                 </div>
                 <h1 className="font-black text-4xl text-gray-900 mb-5">
                     Your cart is empty.
                 </h1>
-                <p className="text-gray-500 mb-8 max-w-md">
-                    It looks like you haven't added anything yet! Fill your cart by exploring our <strong className="text-[#80c4e8]">delicious</strong> and <strong className="text-[#278B27]">fresh</strong> groceries...
-                </p>
+                <div className="text-gray-500 mb-8 max-w-lg">
+                    <p className="mb-0">It looks like you haven't added anything yet!</p> 
+                    <p>Fill your cart by exploring our <strong className="text-[#134c9c]">delicious</strong> and <strong className="text-[#1c7d1c]">fresh</strong> groceries...</p>
+                </div>
                 <Link to='/'>
                     <Button className="h-12 px-8 rounded-full bg-[#134c9c] hover:bg-[#1e5cad]
                     text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all mb-20">
+                        <Store size={22} />
                         Search for your favourite groceries
                     </Button>
                 </Link>
