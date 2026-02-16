@@ -136,11 +136,11 @@ export default function Cart()
                                     {/* Eticheta Sus Stanga */}
                                     {isReduced ? (
                                         <div className="absolute top-0 left-0 bg-orange-100 text-orange-700 text-[10px] font-bold px-3 py-1/2 rounded-br-xl z-10 border-b border-r border-orange-500 flex items-center gap-1">
-                                            <AlertTriangle size={10} /> REDUCED
+                                            <AlertTriangle size={10} /> Clearance
                                         </div>
                                     ) : (
                                         <div className="absolute top-0 left-0 bg-blue-100 text-blue-700 text-[10px] font-bold px-3 py-1/2 rounded-br-xl z-10 border-b border-r border-blue-500 flex items-center gap-1">
-                                            <Sparkles size={10} /> FRESH
+                                            <Sparkles size={10} /> Fresh
                                         </div>
                                     )}
 

@@ -117,15 +117,15 @@ export default function ProductDetails() {
 
     const handleAddToCartClick = () => {
         if (!product) return;
-        const freshModeMode = buyingMode === 'fresh';
-        finalizeAddToCart(quantity, freshModeMode);
+        const isFreshMode = buyingMode === 'fresh';
+        finalizeAddToCart(quantity, isFreshMode);
     };
 
-    const finalizeAddToCart = async (qtyToAdd: number, freshModeMode: boolean=false ) => {
+    const finalizeAddToCart = async (qtyToAdd: number, isFreshMode: boolean=false ) => {
        if (!product) return;
         setIsAddingToCart(true);
         await new Promise(resolve => setTimeout(resolve, 300));
-        await addToCart(product.id, qtyToAdd, freshModeMode);
+        await addToCart(product.id, qtyToAdd, isFreshMode);
         setIsAddingToCart(false);
         setQuantity(1);
     };

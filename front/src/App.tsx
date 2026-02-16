@@ -7,6 +7,7 @@ import Navbar from "./components/Navbar"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import NotFound from "./pages/NotFound"
 import ProductDetails from "./pages/ProductDetails"
+import Checkout from "./pages/Checkout"
 
 function App() {
   return (
@@ -21,6 +22,10 @@ function App() {
         <Route path="/cart" element={
           <ProtectedRoute>
             <Cart />
+          </ProtectedRoute>} />
+        <Route path="/checkout" element={
+          <ProtectedRoute>
+            <Checkout />
           </ProtectedRoute>} />
 
        {/* path="*" -> "Orice altceva, to do later ruta de catch all" - DONE */}
