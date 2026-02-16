@@ -4,7 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
-import { CheckCircle2, CreditCard, Banknote, MapPin, Loader2, Plus, AlertTriangle, ShoppingBag, Store, Package } from "lucide-react";
+import { CheckCircle2, CreditCard, Banknote, MapPin, Loader2, Plus, AlertTriangle, ShoppingBag, Store, Package, ArrowLeft } from "lucide-react";
 import axios from "axios";
 
 interface Address {
@@ -231,7 +231,14 @@ export default function Checkout() {
     return (
         <div className="min-h-[90vh] bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
             <div className="max-w-6xl mx-auto">
-                <h1 className="text-3xl font-black text-gray-900 mb-8">Checkout</h1>
+                
+                {/* BUTON BACK SI TITLU */}
+                <div className="mb-8">
+                    <Link to="/cart" className="inline-flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-[#134c9c] transition-colors mb-4">
+                        <ArrowLeft size={16} strokeWidth={3} /> Return to Cart
+                    </Link>
+                    <h1 className="text-3xl font-black text-gray-900">Checkout</h1>
+                </div>
 
                 {errorMsg && (
                     <div className="mb-6 p-4 bg-red-50 text-red-700 border border-red-200 rounded-xl flex items-center gap-3">
@@ -331,7 +338,7 @@ export default function Checkout() {
                         </div>
 
                         {/* 2. METODA DE PLATA */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 tracking-tight">
                             <div className="flex items-center gap-2 mb-6 border-b pb-4">
                                 <CreditCard className="text-[#134c9c]" />
                                 <h2 className="text-xl font-bold text-gray-900">Payment Method</h2>
@@ -369,7 +376,7 @@ export default function Checkout() {
                                         </div>
                                     </div>
                                     <Input 
-                                        placeholder="Card Number (e.g. 4444 4444 4444 4444)" 
+                                        placeholder="Card Number " 
                                         maxLength={19} 
                                         value={cardNumber} 
                                         onChange={(e) => setCardNumber(e.target.value.replace(/[^0-9 ]/g, ''))} 

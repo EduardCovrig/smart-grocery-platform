@@ -20,6 +20,7 @@ public interface OrderMapper {
 
     //OrderItem -> DTO
     @Mapping(source = "product.name", target = "productName")
+    @Mapping(source = "product.id", target = "productId")
     @Mapping(target = "subTotal", expression = "java(item.getPrice() * item.getQuantity())")
     @Mapping(target = "imageUrl", expression = "java(item.getProduct().getImages() != null &&" +
             " !item.getProduct().getImages().isEmpty() ? item.getProduct().getImages().get(0).getImageUrl() : null)")

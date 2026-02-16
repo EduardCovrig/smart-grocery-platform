@@ -8,6 +8,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute"
 import NotFound from "./pages/NotFound"
 import ProductDetails from "./pages/ProductDetails"
 import Checkout from "./pages/Checkout"
+import Profile from "./pages/Profile"
 
 function App() {
   return (
@@ -26,6 +27,10 @@ function App() {
         <Route path="/checkout" element={
           <ProtectedRoute>
             <Checkout />
+          </ProtectedRoute>} />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>} />
 
        {/* path="*" -> "Orice altceva, to do later ruta de catch all" - DONE */}
