@@ -5,6 +5,7 @@ import ProductCard from "@/components/ProductCard";
 import { ArrowUpDown, Loader2, SearchX, Store } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+  import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from "@/components/ui/select.tsx";
 
 export default function Home() {
     const [products, setProducts] = useState<Product[]>([]); //lista de produse, initial goala
@@ -103,16 +104,17 @@ export default function Home() {
                 </p>
             </div>
             <div className="max-w-[1600px] mx-auto px-2 py-8">
-                {/* SORTARE */}
+                {/* SORTARE (OLD CODE WITH BASIC HTML SELECT) */}
                     <div className="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
                         <h2 className="text-2xl font-black text-blue-900 tracking-tight">
                             {currentCategory ? `${currentCategory}` : "Best Offers"}
-                        </h2>
+                        </h2> 
 
                         <div className="flex items-center gap-2">
                             <ArrowUpDown size={16} className="text-gray-500" />
                             <span className="text-sm font-bold uppercase tracking-wider">Sort by:</span>
-                            <select
+                            {/* OLD Select code with basic html <select>, replaced with shadcn ui select later on.
+                             <select
                                 value={sortOrder}
                                 onChange={(e) => setSortOrder(e.target.value)}
                                 className="bg-gray-50 border border-gray-300 shadow-md text-gray-900 text-sm 
@@ -122,17 +124,33 @@ export default function Home() {
                                 <option value="price-asc">Price: Low to High</option>
                                 <option value="price-desc">Price: High to Low</option>
                                 <option value="name-asc">Name: A to Z</option>
-                            </select>
-                        </div>
-                    </div>
+                            </select> */}
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+
+                            {/* IMPLEMENTAREA SHADCN UI */}
+                            <Select value={sortOrder} onValueChange={(val: any) => setSortOrder(val)}> {/* val poate fi orice, se trimite automat value din selecitem aia ca parametru, si il baga in functie */}
+                                <SelectTrigger className="w-[180px] bg-white border-gray-200 shadow-sm  text-gray-800 font-medium text-sm rounded-xl
+                                 hover:border-[#134c9c] data-[state=open]:border-[#134c9c] focus:outline-none focus:ring-0 focus:ring-offset-0 transition-colors h-10">
+                                    {/* linia cu data-[state=open] vine din shadcn, e cazul in care dropdownul e deschis */}
+                                    <SelectValue placeholder="something testing"></SelectValue> {/* apare doar daca sortOrder state e goala sau undefined, nu cazul nostru */}
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl shadow-lg border-gray-100 text-cente">
+                                    <SelectItem value="none" className="cursor-pointer rounded-lg hover:bg-blue-50 focus:bg-blue-50 transition-colors">Recommended</SelectItem>
+                                    <SelectItem value="price-asc" className="cursor-pointer rounded-lg hover:bg-blue-50 focus:bg-blue-50 transition-colors">Price: Low to High</SelectItem>
+                                    <SelectItem value="price-desc" className="cursor-pointer rounded-lg hover:bg-blue-50 focus:bg-blue-50 transition-colors">Price: High to Low</SelectItem>
+                                    <SelectItem value="name-asc" className="cursor-pointer rounded-lg hover:bg-blue-50 focus:bg-blue-50 transition-colors">Name: A to Z</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div> 
+                    </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                     {sortedProducts.map((product) => (
                         <ProductCard key={product.id} product={product} />
                     ))}
-                </div>
             </div>
         </div>
-        </div>  
-    )
-}
+    </div>
+    
+)};
