@@ -161,7 +161,7 @@ export default function Navbar() {
 
                         {/* Meniul Dropdown */}
                         <div className={`absolute right-0 top-full mt-2 w-64 bg-white border border-gray-100 shadow-xl shadow-blue-900/10 rounded-2xl p-2 transition-all duration-300 origin-top-right
-                            ${isUserMenuOpen ? "opacity-100 scale-100 visible" : "opacity-0 scale-95 invisible"}`}>
+                            ${isUserMenuOpen ? "opacity-100 scale-100 visible" : "opacity-0 scale-75 invisible"}`}>
                             
                             <div className="px-4 py-2 mb-2 border-b border-gray-100">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">My Account</p>
