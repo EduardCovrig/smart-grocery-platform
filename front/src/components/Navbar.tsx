@@ -1,9 +1,8 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { ShoppingCart, User, Search, LogOut, ChevronDown, Grid3X3 } from "lucide-react" //iconitele
+import { ShoppingCart, User, Search, LogOut, ChevronDown, Grid3X3, Package, MapPin } from "lucide-react" //iconitele
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 import {useState,useEffect} from "react"
-import { Button } from "./ui/button";
 import axios from "axios"
 
 interface Category {
@@ -21,6 +20,8 @@ export default function Navbar() {
 
     const [categories, setCategories] = useState<Category[]>([]); //categoriile preluate din backend
     const [isMenuOpen, setIsMenuOpen] = useState(false); //state pentru dropdown menu
+
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false); //state pentru dropdown menu user, daca e deschis sau nu
     useEffect(() => {
         if (cartCount === 0) return; // Nu animam la incarcarea initiala daca e 0
 
@@ -137,27 +138,51 @@ export default function Navbar() {
             </div>
             {/* ZONA 3: User & Cart (Dreapta) */}
             <div className="flex items-center gap-6 z-10">
-                {/* Buton User */}
+                {/* Buton User / Dropdown */}
                 {isAuthenticated ? (
-                   <div className="flex items-center gap-3 pl-3 pr-1 py-1 bg-gray-100 rounded-full border border-gray-200">
-                        <div className="flex items-center gap-2">
-                            <User size={18} className="text-gray-500" />
-                            <span 
-                                className="text-sm font-medium text-gray-700 whitespace-nowrap"
-                                title={fullName} 
-                            >
+                    <div 
+                        className="relative z-50"
+                        onMouseEnter={() => setIsUserMenuOpen(true)}
+                        onMouseLeave={() => setIsUserMenuOpen(false)}
+                    >
+                        {/* Butonul principal care te duce pe default (/profile) */}
+                        <Link 
+                            to="/profile" 
+                            className="flex items-center gap-2 pl-3 pr-4 py-2 bg-gray-50 hover:bg-gray-100 rounded-full border border-gray-200 transition-colors"
+                        >
+                            <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center border border-gray-200 shadow-sm">
+                                <User size={14} className="text-[#134c9c]" />
+                            </div>
+                            <span className="text-sm font-bold text-gray-700 whitespace-nowrap" title={fullName}>
                                 {displayName}
                             </span>
+                            <ChevronDown size={14} className={`text-gray-500 transition-transform duration-300 ${isUserMenuOpen ? "rotate-180" : ""}`} />
+                        </Link>
+
+                        {/* Meniul Dropdown */}
+                        <div className={`absolute right-0 top-full mt-2 w-64 bg-white border border-gray-100 shadow-xl shadow-blue-900/10 rounded-2xl p-2 transition-all duration-300 origin-top-right
+                            ${isUserMenuOpen ? "opacity-100 scale-100 visible" : "opacity-0 scale-95 invisible"}`}>
+                            
+                            <div className="px-4 py-2 mb-2 border-b border-gray-100">
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">My Account</p>
+                            </div>
+
+                            <Link to="/profile" state={{ tab: 'details' }} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-blue-50 hover:text-[#134c9c] transition-colors">
+                                <User size={18} /> My Profile
+                            </Link>
+                            <Link to="/profile" state={{ tab: 'orders' }} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-blue-50 hover:text-[#134c9c] transition-colors">
+                                <Package size={18} /> Order History
+                            </Link>
+                            <Link to="/profile" state={{ tab: 'addresses' }} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-blue-50 hover:text-[#134c9c] transition-colors">
+                                <MapPin size={18} /> Saved Addresses
+                            </Link>
+                            
+                            <div className="h-px bg-gray-100 my-1 mx-2"></div>
+                            
+                            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 transition-colors">
+                                <LogOut size={18} /> Log Out
+                            </button>
                         </div>
-                        <Button 
-                            variant="ghost"
-                            size="lg" 
-                            onClick={handleLogout} 
-                            className="h-7 w-max max-w-lg px-2 rounded-full hover:bg-white hover:text-red-600 transition-all text-gray-400"
-                            title="Log out"
-                        >
-                            <LogOut /> Log Out
-                        </Button>
                     </div>
                 ) : (
                     <Link to="/login" className="flex items-center gap-2 text-gray-600 hover:text-blue-700 font-medium transition">

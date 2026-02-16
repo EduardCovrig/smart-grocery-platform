@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+import { Link,useLocation } from "react-router-dom";
 import { User, MapPin, Package, LogOut, Loader2, Plus, Trash2, CheckCircle2, AlertTriangle, ArrowLeft, X, ShoppingBag } from "lucide-react";
 import axios from "axios";
 
@@ -36,9 +36,19 @@ interface Order {
 
 export default function Profile() {
     const { token, logout } = useAuth();
+    const location = useLocation();
+
 
     // Stari pentru tab-uri (navigation)
-    const [activeTab, setActiveTab] = useState<'details' | 'orders' | 'addresses'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'orders' | 'addresses'>(location.state?.tab || 'details');
+    //daca in locatie a venit cu un state, atunci il ia pe acela, daca nu, clasic details.
+
+    useEffect(() => { // Daca venim din Navbar cu un state care ne spune ce tab sa deschidem, atunci il setam.
+        if (location.state?.tab) {
+            setActiveTab(location.state.tab);
+        }
+    }, [location.state]);
+
     const [isLoading, setIsLoading] = useState(true);
 
     // Datele utilizatorului & Entitati
