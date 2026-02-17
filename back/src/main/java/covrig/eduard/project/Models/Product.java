@@ -62,7 +62,7 @@ public class Product {
     private List<ProductAttribute> attributes;
 
     // 3. Discount-uri (Composition)
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch=FetchType.EAGER, orphanRemoval = true)
     private List<Discount> discounts;
 
     // 4. Interactiuni (Composition - conform SQL ON DELETE CASCADE)

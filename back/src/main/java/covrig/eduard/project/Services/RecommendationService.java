@@ -62,8 +62,7 @@ public class RecommendationService {
                             recommendedProducts.add(dto);
                         }
 
-                        // Ne oprim la 15 recomandari perfecte
-                        if (recommendedProducts.size() == 15) break;
+
                     } catch (Exception e) {
                         // Ignoram discret daca un ID nu mai exista
                     }

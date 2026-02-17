@@ -80,7 +80,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     {product.brandName}
                 </div>
 
-                <h3 className="text-lg font-extrabold text-gray-900 leading-tight line-clamp-2 mb-4 group-hover:text-[#134c9c]">
+                <h3 className="text-lg font-extrabold text-gray-900 leading-tight line-clamp-2 mb-2 group-hover:text-[#134c9c]">
                     {product.name}
                 </h3>
 
@@ -98,7 +98,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </div>
 
                 {/* BUTON ADAUGARE (SPLIT BUTTON DACA E NEVOIE) */}
-                <div className="mt-6 flex gap-2">
+                <div className="mt-2 flex gap-2">
                     {isOutOfStock ? (
                         <Button 
                             disabled

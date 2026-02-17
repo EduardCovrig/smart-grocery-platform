@@ -2,46 +2,81 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import { Product } from "@/types"
 import ProductCard from "@/components/ProductCard";
-import { ArrowUpDown, Loader2, SearchX, Store } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { ArrowUpDown, Loader2, SearchX, Store, Sparkles, AlertTriangle, ChevronRight, Flame, Clock, Wheat, CupSoda, Beef, Cookie, Apple, Egg, CakeSlice } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-  import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from "@/components/ui/select.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { useAuth } from "@/context/AuthContext";
+
+// Definim lista fixa de categorii cu iconite pentru randul de 7 patratele
+const CATEGORIES_LIST = [
+    { name: "Bakery", icon: Wheat, color: "text-amber-600", bg: "bg-amber-50", hover: "hover:bg-amber-100" },
+    { name: "Beverages", icon: CupSoda, color: "text-cyan-600", bg: "bg-cyan-50", hover: "hover:bg-cyan-100" },
+    { name: "Meat & Fish", icon: Beef, color: "text-red-600", bg: "bg-red-50", hover: "hover:bg-red-100" },
+    { name: "Sweets & Snacks", icon: Cookie, color: "text-pink-600", bg: "bg-pink-50", hover: "hover:bg-pink-100" },
+    { name: "Fruits & Vegetables", icon: Apple, color: "text-green-600", bg: "bg-green-50", hover: "hover:bg-green-100" },
+    { name: "Dairy & Eggs", icon: Egg, color: "text-yellow-600", bg: "bg-yellow-50", hover: "hover:bg-yellow-100" },
+    { name: "Pastry", icon: CakeSlice, color: "text-purple-600", bg: "bg-purple-50", hover: "hover:bg-purple-100" }
+];
 
 export default function Home() {
+    const { token } = useAuth();
+    const navigate = useNavigate();
+    const [searchParams] = useSearchParams(); //pentru a citi parametrii din url, ex ?category=, etc.
+    const currentCategory = searchParams.get("category"); //extragerea categoriei din url, daca exista
+
     const [products, setProducts] = useState<Product[]>([]); //lista de produse, initial goala
+    const [recommendations, setRecommendations] = useState<Product[]>([]); 
     const [isLoading, setIsLoading] = useState(true);        //initial se incarca
     const [error, setError] = useState<string | null>(null); //eroare, initial fara.
-
-    const [searchParams]=useSearchParams(); //pentru a citi parametrii din url, ex ?category=, etc.
-    const currentCategory=searchParams.get("category"); //extragerea categoriei din url, daca exista
 
     // State pentru sortare
     const [sortOrder, setSortOrder] = useState<string>("none");
 
     useEffect(() => {
-        const fetchProducts = async () => {
+        const fetchData = async () => {
             try {
                 setIsLoading(true);
                 const apiUrl = import.meta.env.VITE_API_URL;
      
-                let requestUrl=`${apiUrl}/products`;
-                if(currentCategory) // daca s-a dat o categorie in url, adaugam la request
-                {
-                    requestUrl+=`/filter?category=${encodeURIComponent(currentCategory)}`;
+                let requestUrl = `${apiUrl}/products`;
+                // daca s-a dat o categorie in url SI NU E CEA DE AI, adaugam la request
+                if(currentCategory && currentCategory !== "AI_RECOMMENDATIONS") {
+                    requestUrl += `/filter?category=${encodeURIComponent(currentCategory)}`;
                 }
-                const response = await axios.get(requestUrl);
-                setProducts(response.data);
-            }
-            catch (err) {
+
+                const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+
+                const [prodRes, recRes] = await Promise.all([
+                    axios.get(requestUrl),
+                    axios.get(`${apiUrl}/recommendations`, config)
+                ]);
+
+                setProducts(prodRes.data);
+                setRecommendations(recRes.data);
+
+            } catch (err) {
                 console.error(err);
                 setError("It seems we can't load the products right now. Please try again later.");
+            } finally { 
+                setIsLoading(false); 
             }
-            finally { setIsLoading(false); }
         }
-        fetchProducts();
-    },[currentCategory]) //de fiecare data cand se schimba categoria din url
+        fetchData();
+    }, [currentCategory, token]) //de fiecare data cand se schimba categoria din url
 
-    const sortedProducts = [...products].sort((a, b) => { //sortare produse intern doar pe front, 
+    // Impartim produsele in liste speciale pentru "Our Deals" si "Save Me"
+    // "Save Me" = produse care expira curand (le simulam prin cele care au pret redus dar si cantitate de expirare)
+    const saveMeProducts = products.filter(p => (p.nearExpiryQuantity || 0) > 0).slice(0, 5);
+    // "Our Deals" = produse reduse normal (pret curent < pret de baza) care NU sunt in saveMe
+    const dealsProducts = products.filter(p => (p.currentPrice || 0) < (p.price || 0) && (p.nearExpiryQuantity || 0) === 0).slice(0, 5);
+    console.log("Toate produsele primite de la Java:", products);
+console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePrice):", dealsProducts);
+
+    // Alegem ce lista afisam in catalogul mare de jos.
+    let baseProductsToDisplay = currentCategory === "AI_RECOMMENDATIONS" ? recommendations : products;
+
+    const sortedProducts = [...baseProductsToDisplay].sort((a, b) => { //sortare produse intern doar pe front, 
     // fara a face request nou la backend pt a fi mai optim si mai rapid.
         if (sortOrder === "price-asc") {
             return a.currentPrice - b.currentPrice;
@@ -59,78 +94,159 @@ export default function Home() {
                 <Loader2 className="animate-spin text-blue-600" size={50} />
             </div>
         )
-
     }
+
     if (error) return (
         <div className="min-h-96 flex flex-col items-center justify-center text-gray-500 font-bold gap-y-14">
-            <p className="text-9xl font-bold animate-spin"><Loader2 size={80}/></p>
+            <AlertTriangle size={80} className="text-red-400" />
             <p className="text-gray-500 text-4xl">{error}</p>
         </div>
     );
 
-    // cazul in care backendul merge, dar nu avem produse.
-    if(products.length===0)
-    {
+    // COMPONENTA REUTILIZABILA PENTRU UN RAND ORIZONTAL CU BUTON OVERLAP
+    const HorizontalRow = ({ title, icon, items, onClickMore, badgeText, badgeColor }: any) => {
+        if (items.length === 0) return null;
         return (
-            <div className="min-h-[93vh] flex flex-col items-center text-center justify-center bg-gray-50">
-                <div className="p-8 bg-white rounded-full mb-6 shadow-sm hover:bg-gray-800 transition-colors duration-400 group">
-                    <SearchX size={64} className="text-gray-300 group-hover:text-white transition-colors" />
+            <div className="mb-14 bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm relative">
+                <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-sm ${badgeColor}`}>
+                            {icon}
+                        </div>
+                        <h2 className="text-2xl font-black text-gray-900 tracking-tight">{title}</h2>
+                        {badgeText && <span className="ml-2 px-3 py-1 bg-red-100 text-red-700 text-xs font-bold uppercase rounded-full tracking-wider">{badgeText}</span>}
+                    </div>
                 </div>
-                <h1 className="font-black text-4xl text-gray-900 mb-5">
-                    No products found!
-                </h1>
-               <div className="text-gray-500 mb-8 max-w-lg">
-                    <p className="mb-0">It looks like we are currently out of stock for <strong className="text-[#134c9c]">{currentCategory}</strong>.</p>
-                    <p>Try exploring other <strong className="text-[#1c7d1c]">fresh</strong> categories!</p>
+
+                <div className="relative">
+                    {/* pr-8 lasa spatiu ca sa nu se taie din ultimul produs sub buton */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 pr-4">
+                        {items.slice(0, 5).map((product: Product) => (
+                            <ProductCard key={`${title}-${product.id}`} product={product} />
+                        ))}
+                    </div>
+
+                    {/* BUTONUL OVERLAP MĂGIC */}
+                    <button 
+                        onClick={onClickMore}
+                        className="absolute top-1/2 -translate-y-1/2 -right-4 sm:-right-6 z-10 w-14 h-14 bg-white border border-gray-100 text-[#134c9c] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-blue-50 transition-all duration-300"
+                        title="Show More"
+                    >
+                        <ChevronRight size={32} />
+                    </button>
                 </div>
-                <Link to='/'>
-                    <Button className="h-12 px-8 rounded-full bg-[#134c9c] hover:bg-[#1e5cad] text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all mb-20">
-                        <Store size={22} />
-                        View all products
-                    </Button>
-                </Link>
-                </div>
-        )
-    }
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
-        <div className="max-w-screen-2xl mx-auto px-4 py-10">
-            <div className="mb-10 text-center">
-                <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
-                    Fresh Products, made just for you!
-                </h1>
-                <p className="text-lg text-gray-500 mt-2">
-                    Quality assured by our local producers.
-                </p>
-            </div>
-            <div className="max-w-[1600px] mx-auto px-2 py-8">
-                {/* SORTARE (OLD CODE WITH BASIC HTML SELECT) */}
-                    <div className="flex justify-between items-end mb-8 border-b border-gray-200 pb-4">
-                        <h2 className="text-2xl font-black text-blue-900 tracking-tight">
-                            {currentCategory ? `${currentCategory}` : "Best Offers"}
+            <div className="max-w-[1600px] mx-auto px-4 py-10">
+                
+                {/* HEADLINE (Se ascunde daca am selectat o categorie specifica) */}
+                {!currentCategory && (
+                    <div className="mb-10 text-center animate-in fade-in slide-in-from-bottom-4">
+                        <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
+                            Fresh Products, made just for you!
+                        </h1>
+                        <p className="text-lg text-gray-500 mt-2">
+                            Quality assured by our local producers.
+                        </p>
+                    </div>
+                )}
+
+                {/* ========================================================================= */}
+                {/* ZONA DE RANDURI ORIZONTALE (Vizibile doar pe pagina principala de HOME)   */}
+                {/* ========================================================================= */}
+                {!currentCategory && (
+                    <div className="animate-in fade-in">
+                        
+                        {/* 1. RECOMANDARI AI */}
+                        <HorizontalRow 
+                            title="Recommended for You" 
+                            icon={<Sparkles size={20} />} 
+                            badgeColor="bg-gradient-to-br from-[#134c9c] to-blue-400"
+                            badgeText="Powered by AI"
+                            items={recommendations} 
+                            onClickMore={() => navigate('/?category=AI_RECOMMENDATIONS')} 
+                        />
+
+                        {/* 2. OUR DEALS */}
+                        <HorizontalRow 
+                            title="Our Deals" 
+                            icon={<Flame size={20} />} 
+                            badgeColor="bg-orange-500"
+                            items={dealsProducts} 
+                            onClickMore={() => document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' })} 
+                        />
+
+                        {/* 3. SAVE ME (Aproape de expirare) */}
+                        <HorizontalRow 
+                            title="Save Me" 
+                            icon={<Clock size={20} />} 
+                            badgeColor="bg-red-500"
+                            badgeText="Expiring Soon"
+                            items={saveMeProducts} 
+                            onClickMore={() => document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' })} 
+                        />
+
+                        {/* 4. RANDUL DE 7 CATEGORII */}
+                        <div className="mb-16">
+                            <h2 className="text-xl font-bold text-gray-400 uppercase tracking-widest text-center mb-6">Shop by Category</h2>
+                            {/* grid fix pe 7 coloane (pe desktop) ca sa incapa perfect */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+                                {CATEGORIES_LIST.map((cat) => (
+                                    <Link 
+                                        to={`/?category=${encodeURIComponent(cat.name)}`} 
+                                        key={cat.name}
+                                        className={`flex flex-col items-center justify-center p-6 rounded-3xl border border-gray-100 transition-all duration-300 ${cat.bg} ${cat.hover} hover:scale-110 hover:shadow-md cursor-pointer`}
+                                    >
+                                        <cat.icon size={40} className={`${cat.color} mb-3`} strokeWidth={1.5} />
+                                        <span className="text-sm font-bold text-gray-800 text-center leading-tight">{cat.name}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+
+                    </div>
+                )}
+
+
+                {/* ============================================================== */}
+                {/* CATALOGUL PRINCIPAL (Unde ajungi cand apesi Explore/Categorii) */}
+                {/* ============================================================== */}
+                <div id="catalog-section" className="px-2 py-4">
+                    
+                    {/* SORTARE (OLD CODE WITH BASIC HTML SELECT) */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 border-b border-gray-200 pb-4 gap-4">
+                        <h2 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                            {currentCategory === "AI_RECOMMENDATIONS" ? (
+                                <>
+                                    <Sparkles size={28} className="text-[#134c9c]" />
+                                    Your Personalized Catalog
+                                </>
+                            ) : currentCategory ? (
+                                <>
+                                    <Store size={28} className="text-[#134c9c]" /> 
+                                    {currentCategory}
+                                </>
+                            ) : (
+                                "Explore the Catalog"
+                            )}
                         </h2> 
 
-                        <div className="flex items-center gap-2">
-                            <ArrowUpDown size={16} className="text-gray-500" />
-                            <span className="text-sm font-bold uppercase tracking-wider">Sort by:</span>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                            <ArrowUpDown size={16} className="text-gray-500 hidden sm:block" />
+                            <span className="text-sm font-bold uppercase tracking-wider text-gray-500 hidden sm:block">Sort by:</span>
                             {/* OLD Select code with basic html <select>, replaced with shadcn ui select later on.
                              <select
                                 value={sortOrder}
-                                onChange={(e) => setSortOrder(e.target.value)}
-                                className="bg-gray-50 border border-gray-300 shadow-md text-gray-900 text-sm 
-                                rounded-xl hover:border-[#134c9c] focus: outline-none block p-2 text-center cursor-pointer min-w-[160px] duration-300 transition-colors"
-                            >
-                                <option value="none">Recommended</option>
-                                <option value="price-asc">Price: Low to High</option>
-                                <option value="price-desc">Price: High to Low</option>
-                                <option value="name-asc">Name: A to Z</option>
+                                ...
                             </select> */}
-
 
                             {/* IMPLEMENTAREA SHADCN UI */}
                             <Select value={sortOrder} onValueChange={(val: any) => setSortOrder(val)}> {/* val poate fi orice, se trimite automat value din selecitem aia ca parametru, si il baga in functie */}
-                                <SelectTrigger className="w-[180px] bg-white border-gray-200 shadow-sm  text-gray-800 font-medium text-sm rounded-xl
-                                 hover:border-[#134c9c] data-[state=open]:border-[#134c9c] focus:outline-none focus:ring-0 focus:ring-offset-0 transition-colors h-10">
+                                <SelectTrigger className="w-full sm:w-[200px] bg-white border-gray-200 shadow-sm text-gray-800 font-medium text-sm rounded-xl hover:border-[#134c9c] data-[state=open]:border-[#134c9c] focus:outline-none focus:ring-0 focus:ring-offset-0 transition-colors h-11">
                                     {/* linia cu data-[state=open] vine din shadcn, e cazul in care dropdownul e deschis */}
                                     <SelectValue placeholder="something testing"></SelectValue> {/* apare doar daca sortOrder state e goala sau undefined, nu cazul nostru */}
                                 </SelectTrigger>
@@ -143,14 +259,37 @@ export default function Home() {
                             </Select>
                         </div> 
                     </div>
-            </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                    {sortedProducts.map((product) => (
-                        <ProductCard key={product.id} product={product} />
-                    ))}
+                    {/* cazul in care backendul merge, dar nu avem produse. */}
+                    {baseProductsToDisplay.length === 0 ? (
+                        <div className="min-h-[40vh] flex flex-col items-center text-center justify-center bg-gray-50">
+                            <div className="p-8 bg-white rounded-full mb-6 shadow-sm hover:bg-gray-800 transition-colors duration-400 group">
+                                <SearchX size={64} className="text-gray-300 group-hover:text-white transition-colors" />
+                            </div>
+                            <h1 className="font-black text-4xl text-gray-900 mb-5">
+                                No products found!
+                            </h1>
+                            <div className="text-gray-500 mb-8 max-w-lg">
+                                <p className="mb-0">It looks like we are currently out of stock for <strong className="text-[#134c9c]">{currentCategory === "AI_RECOMMENDATIONS" ? "Recommendations" : currentCategory}</strong>.</p>
+                                <p>Try exploring other <strong className="text-[#1c7d1c]">fresh</strong> categories!</p>
+                            </div>
+                            <Link to='/'>
+                                <Button className="h-12 px-8 rounded-full bg-[#134c9c] hover:bg-[#1e5cad] text-white font-bold text-lg shadow-lg hover:shadow-xl transition-all mb-20">
+                                    <Store size={22} />
+                                    View all products
+                                </Button>
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                            {sortedProducts.map((product) => (
+                                <ProductCard key={product.id} product={product} />
+                            ))}
+                        </div>
+                    )}
+                </div>
+
             </div>
         </div>
-    </div>
-    
-)};
+    );
+}

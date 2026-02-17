@@ -102,9 +102,9 @@ def ia_recomandari_ai(user_id: int):
     # Daca primim id-ul 0 (user-ul nu e logat)
     if user_id == 0:
         # ii fortam apelarea cu un id mare, care sigur nu e folosit, ca sa il fortam sa intre pe varianta cazului utilizatorului nou
-        id_uri_recomandate = get_recommendations(9999999,15)
+        id_uri_recomandate = get_recommendations(9999999,100)
     else:
-        id_uri_recomandate = get_recommendations(user_id,15)
+        id_uri_recomandate = get_recommendations(user_id,100)
     return {
         "status": "success",
         "tip_algoritm": "Collaborative Filtering",

@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/products/**", "/api/brands/**", "/api/categories/**")/*.hasAuthority("ADMIN")*/.permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/products/**", "/api/brands/**", "/api/categories/**")/*.hasAuthority("ADMIN")*/.permitAll()
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**", "/api/brands/**", "/api/categories/**")/*.hasAuthority("ADMIN")*/.permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/recommendations/**").permitAll() //pt recomandari, care recomanda automat produsele
+                        //cele mai populare de pe site si cand nu esti logat,deci e nevoie de permitall
 
                         // Gestionare Status Comenzi (Admin)
                         .requestMatchers(HttpMethod.PUT, "/api/orders/*/status").hasAuthority("ADMIN")
