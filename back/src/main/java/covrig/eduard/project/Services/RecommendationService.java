@@ -1,74 +1,89 @@
 package covrig.eduard.project.Services;
 
-import covrig.eduard.project.Models.Product;
 import covrig.eduard.project.Models.User;
-import covrig.eduard.project.Models.UserInteraction;
 import covrig.eduard.project.Repositories.ProductRepository;
-import covrig.eduard.project.Repositories.UserInteractionRepository;
 import covrig.eduard.project.Repositories.UserRepository;
 import covrig.eduard.project.dtos.product.ProductResponseDTO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class RecommendationService {
-    private final UserInteractionRepository interactionRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final ProductService productService;
 
-    public RecommendationService(UserInteractionRepository interactionRepository, ProductRepository productRepository, UserRepository userRepository, ProductService productService) {
-        this.interactionRepository = interactionRepository;
+    //RestTemplate este "browser-ul" intern al lui Java cu care vom accesa Python-ul
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    public RecommendationService(ProductRepository productRepository, UserRepository userRepository, ProductService productService) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.productService = productService;
     }
-    public List<ProductResponseDTO> getRecommendations(String email)
-    {
-        if (email == null || email.equals("anonymousUser")) {
+
+    public List<ProductResponseDTO> getRecommendations(String email) {
+        Long userId = 0L; // ID-ul 0 e pentru vizitatorii neautentificati (ca sa fie in concordanta cu scriptul de python care
+        //va afisa cele mai populare produse dintre toti userii in cazul sata)
+
+        if (email != null && !email.equals("anonymousUser")) {
+            User user = userRepository.findByEmail(email).orElse(null);
+            if (user != null) {
+                userId = user.getId();
+            }
+        }
+
+        try {
+            //1. Apelam microserviciul de machine learning din python
+            String pythonApiUrl = "http://localhost:8000/api/ai/recommend/" + userId;
+            log.info("Cerem recomandari de la AI pentru user_id: {}", userId);
+
+            //Mapam JSON-ul venit de la Python intr-un map
+            Map<String, Object> response = restTemplate.getForObject(pythonApiUrl, Map.class);
+
+            if (response != null && response.containsKey("recommended_ids")) {
+                List<Integer> recommendedIdsInt = (List<Integer>) response.get("recommended_ids");
+
+                //2. Extragem efectiv produsele din baza noastra de date folosind ID-urile primite
+                List<ProductResponseDTO> recommendedProducts = new ArrayList<>();
+                for (Integer id : recommendedIdsInt) {
+                    try {
+                        // Folosim productService pentru ca el stie sa aplice si logica de Reduceri/Preturi Dinamice!
+                        ProductResponseDTO dto = productService.getProductById(id.longValue());
+
+                        if (dto.getStockQuantity() > 0) { //ne asiguram ca e pe stock acum
+                            recommendedProducts.add(dto);
+                        }
+
+                        // Ne oprim la 15 recomandari perfecte
+                        if (recommendedProducts.size() == 15) break;
+                    } catch (Exception e) {
+                        // Ignoram discret daca un ID nu mai exista
+                    }
+                }
+                log.info("AI a recomandat cu succes {} produse.", recommendedProducts.size());
+                return recommendedProducts;
+            }
+        } catch (Exception e) {
+            log.error("Eroare la conectarea cu Python AI. Detalii: {}", e.getMessage());
+        }
+
+        // 3. Fallback de siguranta (Daca ceva pica, sau ai-ul nu e pornit, nu da exceptie si ma baga pe cealalta metoda)
         return getGlobalTopProducts();
-        }
-        User user = userRepository.findByEmail(email).orElse(null);
-        if (user == null) return getGlobalTopProducts();
-
-        //Preluam interactiunile utilizatorului existent
-        // 1. Preluăm interacțiunile utilizatorului
-        List<UserInteraction> interactions = interactionRepository.findAllByUserId(user.getId());
-
-        if (interactions.isEmpty()) {
-            return getGlobalTopProducts();
-        }
-        //2. identificam categoiile preferate
-        Map<String,Long> categoryPreferences=interactions.stream().map(i->i.getProduct().getCategory().getName())
-                .collect(Collectors.groupingBy(name -> name, Collectors.counting()));
-
-        //3. Top 2 categorii cele mai vizitate sau cumparate
-        List<String> topCategories=categoryPreferences.entrySet().stream().
-                sorted((e1,e2)-> e1.getValue().compareTo(e2.getValue()))
-                .limit(2)
-                .map(Map.Entry::getKey)//key e numele categoriei
-                .collect(Collectors.toList());
-        //4. Recomandarea efectiva a celor 2 categorii de top pentru utilizator
-        List<Product> recommendedProducts=productRepository.findAll().stream()
-                        .filter(p -> topCategories.contains(p.getCategory().getName()))
-                .filter(p -> p.getStockQuantity()>0).limit(5)
-                .collect(Collectors.toList());
-        return recommendedProducts.stream().map(p -> productService.getProductById(p.getId()))
-                //SE APLICA AUTOMAT ENRICHMENTUL DIN PRODUCTSERVICE prin apelarea getProductById
-                .collect(Collectors.toList());
-
     }
+
     private List<ProductResponseDTO> getGlobalTopProducts() {
-        //Metoda de fallback, returnam primele 5 produse din stoc (poate modificat pe viitor la cele mai vandute da nu am chef
-        //sa fac asta acum)
         return productRepository.findAll().stream()
                 .filter(p -> p.getStockQuantity() > 0)
-                .limit(5)
+                .limit(15)
                 .map(p -> productService.getProductById(p.getId()))
                 .collect(Collectors.toList());
     }
-
 }
