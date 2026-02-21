@@ -164,6 +164,16 @@ public class OrderService {
         return orderMapper.toDto(savedOrder); //returnam json cu OrderDto.
     }
 
+    //Pentru Admin - Preluarea tuturor comenzilor din sistem
+    @Transactional(readOnly = true)
+    public List<OrderResponseDTO> getAllOrdersInSystem() {
+        // Le sortam descrescator dupa data (cele mai noi primele)
+        List<Order> allOrders = orderRepository.findAll(
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+        );
+        return orderMapper.toDtoList(allOrders);
+    }
+
     //Istoric comenzi utilizatof
     @Transactional(readOnly = true)
     public List<OrderResponseDTO> getUserOrders(String userEmail) {

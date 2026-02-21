@@ -56,4 +56,9 @@ public class OrderController {
     public ResponseEntity<java.util.Map<String, Object>> getAdminStats() {
         return ResponseEntity.ok(orderService.getDashboardStats());
     }
+    //Endpoint pentru Admin ca sa vada toate comenzile
+    @GetMapping("/all")
+    public ResponseEntity<List<OrderResponseDTO>> getAllOrdersInSystem() {
+        return ResponseEntity.ok(orderService.getAllOrdersInSystem());
+    }
 }

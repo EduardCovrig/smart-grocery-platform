@@ -99,6 +99,12 @@ public class ProductController {
         ProductResponseDTO updatedProduct= productService.updateProduct(id,updateDTO);
         return ResponseEntity.ok(updatedProduct); //200 OK
     }
+    @PutMapping("/{id}/price")
+    public ResponseEntity<ProductResponseDTO> updateProductPrice(
+            @PathVariable Long id,
+            @RequestParam Double newPrice) {
+        return ResponseEntity.ok(productService.updateProductPrice(id, newPrice));
+    }
 
     //DELETE /api/products/{id}
     @DeleteMapping("/{id}")
@@ -109,9 +115,11 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(deletedProduct);
         //returnaza statusul 200 OK si produsl sters ca raspuns de confirmare
     }
-
-
-
+    // NOU: Endpoint pentru aruncarea lotului expirat
+    @PutMapping("/{id}/drop-clearance")
+    public ResponseEntity<ProductResponseDTO> dropClearanceStock(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.dropClearanceStock(id));
+    }
 
 }
 

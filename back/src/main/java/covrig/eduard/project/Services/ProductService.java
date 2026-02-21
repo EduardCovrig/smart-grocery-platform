@@ -280,6 +280,13 @@ public class ProductService {
         return enrichProductDto(productRepository.save(existingProduct));
     }
 
+    public ProductResponseDTO updateProductPrice(Long id, Double newPrice) {
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Produsul cu ID-ul " + id + " nu a fost gasit."));
+
+        existingProduct.setPrice(newPrice);
+        return enrichProductDto(productRepository.save(existingProduct));
+    }
     //DELETE
 
     public ProductResponseDTO deleteProduct(Long id) {
@@ -288,4 +295,20 @@ public class ProductService {
         productRepository.delete(p);
         return productMapper.toDto(p);
     }
+    //Metoda pentru a elimina DOAR lotul care expira manual de catre admin
+    public ProductResponseDTO dropClearanceStock(Long id) {
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Produsul cu ID-ul " + id + " nu a fost gasit."));
+
+        int expiredQty = existingProduct.getNearExpiryQuantity();
+
+        // Scadem din stocul total cantitatea stricata/expirata
+        existingProduct.setStockQuantity(Math.max(0, existingProduct.getStockQuantity() - expiredQty));
+        // Resetam lotul critic
+        existingProduct.setNearExpiryQuantity(0);
+
+        return enrichProductDto(productRepository.save(existingProduct));
+    }
+
+
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import { Product } from "@/types"
 import ProductCard from "@/components/ProductCard";
-import { ArrowUpDown, Loader2, SearchX, Store, Sparkles, AlertTriangle, ChevronRight, Flame, Clock, Wheat, CupSoda, Beef, Cookie, Apple, Egg, CakeSlice, Search } from "lucide-react";
+import { ArrowUpDown, Loader2, SearchX, Store, Sparkles, AlertTriangle, ChevronRight, Flame, Clock, Wheat, CupSoda, Beef, Cookie, Apple, Egg, CakeSlice, Search, ArrowLeft, ArrowRight } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
@@ -33,6 +33,16 @@ export default function Home() {
 
     // State pentru sortare
     const [sortOrder, setSortOrder] = useState<string>("none");
+
+    //paginare
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 40;
+
+    const currentFilter = searchParams.get("filter");
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [currentCategory, currentBrand, currentFilter, sortOrder]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -92,6 +102,12 @@ export default function Home() {
         return 0; // "none"
     });
 
+    const totalPages = Math.ceil(sortedProducts.length / ITEMS_PER_PAGE);
+    const paginatedProducts = sortedProducts.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE, 
+        currentPage * ITEMS_PER_PAGE
+    );
+
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -108,7 +124,7 @@ export default function Home() {
     );
 
     // COMPONENTA REUTILIZABILA PENTRU UN RAND ORIZONTAL CU BUTON OVERLAP
-    const HorizontalRow = ({ title, icon, items, onClickMore, badgeText, badgeColor }: any) => {
+    const HorizontalRow = ({ title, icon, items, onClickMore, badgeText, badgeColor, badgeClass }: any) => {
         if (items.length === 0) return null;
         return (
             <div className="mb-14 bg-white p-6 sm:p-8 rounded-3xl border border-gray-100 shadow-sm relative">
@@ -118,14 +134,14 @@ export default function Home() {
                             {icon}
                         </div>
                         <h2 className="text-2xl font-black text-gray-900 tracking-tight">{title}</h2>
-                        {badgeText && <span className="ml-2 px-3 py-1 bg-red-100 text-red-700 text-xs font-bold uppercase rounded-full tracking-wider">{badgeText}</span>}
+                        {badgeText && <span className={`ml-2 px-3 py-1 text-xs font-bold uppercase rounded-full tracking-wider shadow-sm ${badgeClass || 'bg-red-100 text-red-700'}`}>{badgeText}</span>}
                     </div>
                 </div>
 
                 <div className="relative">
                     {/* pr-8 lasa spatiu ca sa nu se taie din ultimul produs sub buton */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 pr-4">
-                        {items.slice(0, 5).map((product: Product) => (
+                        {items.slice(0, title === "Recommended for You" ? 10 : 5).map((product: Product) => (
                             <ProductCard key={`${title}-${product.id}`} product={product} />
                         ))}
                     </div>
@@ -142,13 +158,15 @@ export default function Home() {
             </div>
         );
     };
+    
+    const showHeroAndRows = !currentCategory && !currentBrand && !currentFilter; //ascundem headerele daca exsita filtru
 
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-[1600px] mx-auto px-4 py-10">
                 
                 {/* HEADLINE (Se ascunde daca am selectat o categorie specifica) */}
-                {!currentCategory && !currentBrand && (
+                {showHeroAndRows && (
                     <div className="mb-10 text-center animate-in fade-in slide-in-from-bottom-4">
                         <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
                             Fresh Products, made just for you!
@@ -162,7 +180,7 @@ export default function Home() {
                 {/* ========================================================================= */}
                 {/* ZONA DE RANDURI ORIZONTALE (Vizibile doar pe pagina principala de HOME)   */}
                 {/* ========================================================================= */}
-                {!currentCategory && !currentBrand && (
+                {showHeroAndRows && (
                     <div className="animate-in fade-in">
                         
                         {/* 1. RECOMANDARI AI */}
@@ -170,6 +188,7 @@ export default function Home() {
                             title="Recommended for You" 
                             icon={<Sparkles size={20} />} 
                             badgeColor="bg-gradient-to-br from-[#134c9c] to-blue-400"
+                            badgeClass="bg-gradient-to-r from-indigo-500 to-[#134c9c] text-white"
                             badgeText="Powered by AI"
                             items={recommendations} 
                             onClickMore={() => navigate('/?category=AI_RECOMMENDATIONS')} 
@@ -181,7 +200,7 @@ export default function Home() {
                             icon={<Flame size={20} />} 
                             badgeColor="bg-orange-500"
                             items={dealsProducts} 
-                            onClickMore={() => document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' })} 
+                            onClickMore={() => navigate('/?filter=deals')} 
                         />
 
                         {/* 3. SAVE ME (Aproape de expirare) */}
@@ -190,8 +209,9 @@ export default function Home() {
                             icon={<Clock size={20} />} 
                             badgeColor="bg-red-500"
                             badgeText="Expiring Soon"
+                            badgeClass="bg-gradient-to-r from-red-500 to-red-900 text-white"
                             items={saveMeProducts} 
-                            onClickMore={() => document.getElementById("catalog-section")?.scrollIntoView({ behavior: 'smooth' })} 
+                            onClickMore={() => navigate('/?filter=expiring')} 
                         />
 
                         {/* 4. RANDUL DE 7 CATEGORII */}
@@ -227,6 +247,16 @@ export default function Home() {
                                 <>
                                     <Sparkles size={28} className="text-[#134c9c]" />
                                     Your Personalized Catalog
+                                </>
+                            ) : currentFilter === "deals" ? (
+                                <>
+                                    <Flame size={28} className="text-orange-500" />
+                                    Our Deals
+                                </>
+                            ) : currentFilter === "expiring" ? (
+                                <>
+                                    <Clock size={28} className="text-red-500" />
+                                    Save Me (Clearance)
                                 </>
                             ) : currentCategory ? (
                                 <>
@@ -278,7 +308,7 @@ export default function Home() {
                                 No products found!
                             </h1>
                             <div className="text-gray-500 mb-8 max-w-lg">
-                                <p className="mb-0">It looks like we are currently out of stock for <strong className="text-[#134c9c]">{currentCategory === "AI_RECOMMENDATIONS" ? "Recommendations" : currentCategory}</strong>.</p>
+                                <p className="mb-0">It looks like we are currently out of stock for <strong className="text-[#134c9c]">{currentCategory === "AI_RECOMMENDATIONS" ? "Recommendations" : currentFilter === "deals" ? "Deals" : currentFilter === "expiring" ? "Clearance" : currentCategory || currentBrand}</strong>.</p>
                                 <p>Try exploring other <strong className="text-[#1c7d1c]">fresh</strong> categories!</p>
                             </div>
                             <Link to='/'>
@@ -289,10 +319,38 @@ export default function Home() {
                             </Link>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                            {sortedProducts.map((product) => (
-                                <ProductCard key={product.id} product={product} />
-                            ))}
+                        <div className="space-y-12">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                                {paginatedProducts.map((product) => (
+                                    <ProductCard key={product.id} product={product} />
+                                ))}
+                            </div>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-center gap-4 pt-8 pb-10">
+                                    <Button 
+                                        variant="outline"
+                                        disabled={currentPage === 1}
+                                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                        className="h-12 px-6 rounded-full font-bold border-2 hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        <ArrowLeft size={18} /> Back
+                                    </Button>
+                                    
+                                    <span className="font-bold text-gray-500">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
+
+                                    <Button 
+                                        variant="outline"
+                                        disabled={currentPage === totalPages}
+                                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                        className="h-12 px-6 rounded-full font-bold border-2 hover:bg-gray-100 disabled:opacity-50 flex items-center gap-2"
+                                    >
+                                        Next <ArrowRight size={18} />
+                                    </Button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
