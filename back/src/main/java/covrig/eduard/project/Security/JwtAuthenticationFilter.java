@@ -43,8 +43,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (jwtService.isTokenValid(jwt, userDetails)) { //validam tokenul jwt
                 //(se uita la data de expriare, daca e expirata returneaza false, si verifica daca emailul din jwt corespunde cu cel
                 //din baza de cate)
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(  //asta e ca o legitimatie de intrare in cont
-                        //, fara ea, nu ai cum sa intri niciodata.
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(  //asta e ca o legitimatie de intrare
+                        // in cont, fara ea, nu ai cum sa intri niciodata.
                         userDetails, //datele utilizatorului
                         null, //parola e considerata null ca a intrat cu tokenul
                         userDetails.getAuthorities() //ce drepturi are utilizatorul
@@ -60,8 +60,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         }
         filterChain.doFilter(request, response); //ca next() din js.
+    }
         //daca asta e ultimul filter, trimite mai departe request-ul direct catre controller, daca nu, la urmatorul filtru.
         //daca undeva pana aici pica, ca a aprut vreo exceptie deci utilizaotrul nu e in reugla, pur si simplu nu ajunge
         //aici niciodata, deci nu va trece la urmatorul filtru/controller -> FAIL.
-    }
+
 }

@@ -54,6 +54,11 @@ public class ProductController {
         List<ProductResponseDTO> products=productService.getProductsExpiringBefore(date);
         return ResponseEntity.ok(products); //200 OK
     }
+    //GET /api/products/search?query=milk
+    @GetMapping("/search")
+    public ResponseEntity<List<ProductResponseDTO>> searchProducts(@RequestParam String query) {
+        return ResponseEntity.ok(productService.searchProductsByName(query));
+    }
 
     @GetMapping("/filter")  //metode de filtrare, se pot adauga ulterior mai multe @RequestParam cu
     //required=false, si crearea de if-uri pentru gestionare. Momentan, se poate filtra doar dupa o singura categorie

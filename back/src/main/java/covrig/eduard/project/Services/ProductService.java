@@ -70,6 +70,13 @@ public class ProductService {
         return product.getPrice();
     }
 
+    @Transactional(readOnly = true)
+    public List<ProductResponseDTO> searchProductsByName(String query) {
+        return productRepository.findByNameContainingIgnoreCase(query).stream()
+                .map(this::enrichProductDto)
+                .collect(Collectors.toList());
+    }
+
 
 
     private Double applyDiscount(Double originalPrice, Double value,String type)

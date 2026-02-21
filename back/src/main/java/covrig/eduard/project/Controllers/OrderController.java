@@ -51,4 +51,9 @@ public class OrderController {
     ) {
         return ResponseEntity.ok(orderService.updateOrderStatus(id, newStatus.replace("\"", "")));
     }
+
+    @GetMapping("/stats")
+    public ResponseEntity<java.util.Map<String, Object>> getAdminStats() {
+        return ResponseEntity.ok(orderService.getDashboardStats());
+    }
 }

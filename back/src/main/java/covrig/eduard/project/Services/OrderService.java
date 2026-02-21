@@ -10,7 +10,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -186,6 +188,24 @@ public class OrderService {
 
         order.setStatus(newStatus.toUpperCase());
         return orderMapper.toDto(orderRepository.save(order));
+    }
+
+    //ADMIN
+    @Transactional(readOnly = true)
+    public Map<String, Object> getDashboardStats() {
+        Map<String, Object> stats = new HashMap<>();
+
+        Long totalOrders = orderRepository.countTotalOrders();
+        Double totalRevenue = orderRepository.sumTotalRevenue();
+        Long expiringProducts = productRepository.findAll().stream()
+                .filter(p -> p.getNearExpiryQuantity() > 0)
+                .count();
+
+        stats.put("totalOrders", totalOrders);
+        stats.put("totalRevenue", totalRevenue != null ? totalRevenue : 0.0);
+        stats.put("expiringProducts", expiringProducts);
+
+        return stats;
     }
 
 }
