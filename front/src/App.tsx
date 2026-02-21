@@ -10,6 +10,7 @@ import ProductDetails from "./pages/ProductDetails"
 import Checkout from "./pages/Checkout"
 import Profile from "./pages/Profile"
 import ScrollToTop from "./components/ScrollToTop"
+import AdminDashboard from "./pages/AdminDashboard"
 
 function App() {
   return (
@@ -34,6 +35,11 @@ function App() {
           <ProtectedRoute>
             <Profile />
           </ProtectedRoute>} />
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>} 
+        />
 
        {/* path="*" -> "Orice altceva, to do later ruta de catch all" - DONE */}
       <Route path='*' element={<NotFound/>}/>

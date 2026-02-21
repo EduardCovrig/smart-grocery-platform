@@ -1,9 +1,10 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
-import { ShoppingCart, User, Search, LogOut, ChevronDown, Grid3X3, Package, MapPin } from "lucide-react" //iconitele
+import { ShoppingCart, User, Search, LogOut, ChevronDown, Grid3X3, Package, MapPin, Loader2, Store, ShoppingBag } from "lucide-react" //iconitele
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
-import {useState,useEffect} from "react"
+import {useState,useEffect, useRef} from "react"
 import axios from "axios"
+import { Product } from "@/types";
 
 interface Category {
     id: number;
@@ -27,7 +28,7 @@ export default function Navbar() {
 
         setIsBumping(true); // 1. Pornim animatia
 
-        // 2. stop dupa 0.3s
+        // 2. stop dupa 0.4s
         const timer = setTimeout(() => {
             setIsBumping(false);
         }, 400);
@@ -70,6 +71,50 @@ export default function Navbar() {
         logout();
         navigate("/");
     };
+
+    // STATE PENTRU SEARCH DINAMIC
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<Product[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const searchRef = useRef<HTMLDivElement>(null);
+
+    // LOGICA SEARCH DEBOUNCE
+    useEffect(() => {
+        if (searchQuery.trim().length < 2) {
+            setSearchResults([]);
+            setShowDropdown(false);
+            return;
+        }
+
+        const delayDebounceFn = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const apiUrl = import.meta.env.VITE_API_URL;
+                const response = await axios.get(`${apiUrl}/products/search?query=${searchQuery}`);
+                // Pastram doar primele 3 rezultate
+                setSearchResults(response.data.slice(0, 3));
+                setShowDropdown(true);
+            } catch (err) {
+                console.error("Search error", err);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 200); // asteapta 200ms
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery]);
+
+    // Ascunde search dropdown daca dam click in afara lui
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     /// Ascunde Navbar pe Login/Register
     if (location.pathname === "/login" || location.pathname === "/register")
@@ -128,12 +173,63 @@ export default function Navbar() {
                     </div>
                 </div>
             </div>
-            {/* ZONA 2: SEARCH BAR (Centru) */}
-            <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-xl px-4"> {/* hidden pe ecranele mici, dar pe cele medii in sus se afiseaza flex */}
+          {/* ZONA 2: SEARCH BAR (Centru) */}
+            <div className="hidden md:flex absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-xl px-4" ref={searchRef}> 
                 <div className="relative w-full">
-                    <input type="text" placeholder="Search for your favorite products..."
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:border-black bg-gray-50" />
-                    <Search size={20} className="absolute left-3 top-2.5 text-gray-600" />
+                    <input 
+                        type="text" 
+                        placeholder="Search for your favorite products..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onFocus={() => { if(searchResults.length > 0) setShowDropdown(true) }}
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-full focus:outline-none focus:border-black bg-gray-50 transition-colors" 
+                    />
+                    {isSearching ? (
+                        <Loader2 size={20} className="absolute left-3 top-3 text-gray-400 animate-spin" />
+                    ) : (
+                        <Search size={20} className="absolute left-3 top-3 text-gray-400" />
+                    )}
+
+                    {/* DROPDOWN REZULTATE SEARCH */}
+                    {showDropdown && (
+                        <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                            {searchResults.length > 0 ? (
+                                <div>
+                                    {searchResults.map((prod) => (
+                                        <div 
+                                            key={prod.id}
+                                            onClick={() => {
+                                                setShowDropdown(false);
+                                                setSearchQuery("");
+                                                navigate(`/product/${prod.id}`);
+                                            }}
+                                            className="flex items-center gap-4 p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-none transition-colors"
+                                        >
+                                            {/* Poza in stanga */}
+                                            <div className="w-12 h-12 bg-white border border-gray-200 rounded-lg flex items-center justify-center shrink-0 p-1">
+                                                {prod.imageUrls?.[0] ? (
+                                                    <img src={prod.imageUrls[0]} alt={prod.name} className="w-full h-full object-contain" />
+                                                ) : (
+                                                    <ShoppingBag size={20} className="text-gray-300" />
+                                                )}
+                                            </div>
+                                            {/* Nume si brand in centru */}
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-sm font-bold text-gray-900 truncate">{prod.name}</h4>
+                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">{prod.brandName}</p>
+                                            </div>
+                                            {/* Pret in dreapta */}
+                                            <div className="text-right shrink-0">
+                                                <span className="text-[#134c9c] font-black">{prod.currentPrice.toFixed(2)} Lei</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="p-4 text-center text-sm text-gray-500">No products found.</div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
             {/* ZONA 3: User & Cart (Dreapta) */}
@@ -166,6 +262,12 @@ export default function Navbar() {
                             <div className="px-4 py-2 mb-2 border-b border-gray-100">
                                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">My Account</p>
                             </div>
+                            
+                            {user?.role === "ADMIN" && (
+                                <Link to="/admin" onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors mb-2">
+                                    <Store size={18} /> Admin Dashboard
+                                </Link>
+                            )}
 
                             <Link to="/profile" state={{ tab: 'details' }} onClick={() => setIsUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-gray-600 hover:bg-blue-50 hover:text-[#134c9c] transition-colors">
                                 <User size={18} /> My Profile
