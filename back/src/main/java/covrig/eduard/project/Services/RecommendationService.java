@@ -32,37 +32,30 @@ public class RecommendationService {
     public List<ProductResponseDTO> getRecommendations(String email) {
         Long userId = 0L; // ID-ul 0 e pentru vizitatorii neautentificati (ca sa fie in concordanta cu scriptul de python care
         //va afisa cele mai populare produse dintre toti userii in cazul sata)
-
         if (email != null && !email.equals("anonymousUser")) {
             User user = userRepository.findByEmail(email).orElse(null);
             if (user != null) {
                 userId = user.getId();
             }
         }
-
         try {
             //1. Apelam microserviciul de machine learning din python
             String pythonApiUrl = "http://localhost:8000/api/ai/recommend/" + userId;
             log.info("Cerem recomandari de la AI pentru user_id: {}", userId);
-
             //Mapam JSON-ul venit de la Python intr-un map
             Map<String, Object> response = restTemplate.getForObject(pythonApiUrl, Map.class);
 
             if (response != null && response.containsKey("recommended_ids")) {
                 List<Integer> recommendedIdsInt = (List<Integer>) response.get("recommended_ids");
-
                 //2. Extragem efectiv produsele din baza noastra de date folosind ID-urile primite
                 List<ProductResponseDTO> recommendedProducts = new ArrayList<>();
                 for (Integer id : recommendedIdsInt) {
                     try {
                         // Folosim productService pentru ca el stie sa aplice si logica de Reduceri/Preturi Dinamice!
                         ProductResponseDTO dto = productService.getProductById(id.longValue());
-
                         if (dto.getStockQuantity() > 0) { //ne asiguram ca e pe stock acum
                             recommendedProducts.add(dto);
                         }
-
-
                     } catch (Exception e) {
                         // Ignoram discret daca un ID nu mai exista
                     }
@@ -73,7 +66,6 @@ public class RecommendationService {
         } catch (Exception e) {
             log.error("Eroare la conectarea cu Python AI. Detalii: {}", e.getMessage());
         }
-
         // 3. Fallback de siguranta (Daca ceva pica, sau ai-ul nu e pornit, nu da exceptie si ma baga pe cealalta metoda)
         return getGlobalTopProducts();
     }

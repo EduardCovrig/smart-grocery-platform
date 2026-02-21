@@ -50,10 +50,9 @@ public class OrderService {
         Address address = addressRepository.findById(orderDTO.getAddressId()) //verifica daca are o adresa utilizaotrul
                 .orElseThrow(() -> new RuntimeException("Adresa invalida"));
 
-        if (!address.getUser().getId().equals(user.getId())) { //daca adresa nu e a lui (bug extern ceva)
+        if (!address.getUser().getId().equals(user.getId())) { //daca adresa nu e a lui (prevenire bug)
             throw new RuntimeException("Aceasta adresa nu iti apartine!");
         }
-
         //pasul de pregatire comanda
         Order order = new Order();
         //setare date comanda
@@ -123,10 +122,8 @@ public class OrderService {
 //            // Creare OrderItem
 
             // LOGICA SIMPLIFICATA:
-            boolean isFreshRow = Boolean.TRUE.equals(cartItem.getIsFreshSelected());
-
-            // 1. Scadem stocul exact de unde trebuie (Fara price slicing aici)
-            if (isFreshRow) {
+            boolean isFreshRow = Boolean.TRUE.equals(cartItem.getIsFreshSelected()); //boolean.TRUE.equals previne cazul null
+            if (isFreshRow) {  // 1. Scadem stocul exact de unde trebuie
                 int freshStockAvailable = product.getStockQuantity() - product.getNearExpiryQuantity();
                 if (qtyToBuy > freshStockAvailable) {
                     throw new RuntimeException("Stoc Fresh insuficient pentru: " + product.getName());
@@ -139,45 +136,28 @@ public class OrderService {
                 product.setNearExpiryQuantity(product.getNearExpiryQuantity() - qtyToBuy);
                 product.setStockQuantity(product.getStockQuantity() - qtyToBuy);
             }
-
             productRepository.save(product);
-
             // 2. Calculam pretul direct
             Double itemSubtotal = productService.calculateSubtotalForQuantity(product, qtyToBuy, isFreshRow);
             Double effectiveUnitPrice = itemSubtotal / qtyToBuy;
             OrderItem orderItem = orderMapper.cartItemToOrderItem(cartItem);
-            orderItem.setOrder(order);
-            orderItem.setPrice(effectiveUnitPrice); // Salvam pretul mediu platit
-            orderItem.setBasePrice(product.getPrice());
-
-            totalOrderPrice += itemSubtotal;
-            order.getItems().add(orderItem);
-
+            orderItem.setOrder(order); orderItem.setPrice(effectiveUnitPrice);
+            totalOrderPrice += itemSubtotal; order.getItems().add(orderItem);
             interactionService.logInteraction(userEmail, product.getId(), "PURCHASE");
             //pentru fiecare produs, odata ce este pus in comanda, se adauga in tabela user-ului cu interactiuni de cumparare
-        }
-        //dupa ce trece prin fiecare item
-
-
+        }   //dupa ce trece prin fiecare item
         //AICI SE ADAUGA PROMO CODEURI
-
         if (orderDTO.getPromoCode() != null && !orderDTO.getPromoCode().isBlank()) {
             String code = orderDTO.getPromoCode().toUpperCase().trim();
-            // Exemplu: "LICENTA10" 10% reducere
-            if (code.equals("LICENTA10")) {
-                totalOrderPrice = totalOrderPrice * 0.90; // Scade 10%
+            if (code.equals("LICENTA10")) { // Exemplu: "LICENTA10" 10% reducere
+                totalOrderPrice = totalOrderPrice * 0.90;
                 order.setPromoCode(code);
             }
-
             // Daca codul e invalid il ignoram
         }
-
         order.setTotalPrice(totalOrderPrice);
-        Order savedOrder = orderRepository.save(order);
-        //salvam comanda in baza de date, savedOrder va avea si id-ul din baza de date preluat
-        cart.getItems().clear();
-        cartRepository.save(cart); //golim cosul
-        // Aici ar veni notificarea pe email (Momentan doar comentariu)
+        Order savedOrder = orderRepository.save(order); //salvam comanda in baza de date, savedOrder va avea si id-ul din baza de date preluat
+        cart.getItems().clear(); cartRepository.save(cart); //golim cosul
         notificationService.sendOrderConfirmation(user.getEmail(), savedOrder);
         return orderMapper.toDto(savedOrder); //returnam json cu OrderDto.
     }

@@ -9,10 +9,12 @@ import NotFound from "./pages/NotFound"
 import ProductDetails from "./pages/ProductDetails"
 import Checkout from "./pages/Checkout"
 import Profile from "./pages/Profile"
+import ScrollToTop from "./components/ScrollToTop"
 
 function App() {
   return (
     <BrowserRouter>
+    <ScrollToTop/> {/* Componenta care se asigura ca la schimbarea paginii, scroll-ul e sus */}
       <Navbar />
 
       <Routes>

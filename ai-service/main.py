@@ -24,6 +24,18 @@ def get_recommendations(target_user_id: int, numar_recomandari: int=5):
     conn=psycopg2.connect(**DB_CONFIG)
     query = "SELECT user_id, product_id, interaction_type FROM user_interaction"
     df = pd.read_sql(query, conn)
+    query_cart = f""""
+            SELECT ci.product_id 
+            FROM cart_item ci 
+            JOIN cart c ON ci.cart_id = c.id 
+            WHERE c.user_id = {target_user_id}
+        """
+    try:
+        df_cart = pd.read_sql(query_cart, conn)
+        produse_in_cos = set(df_cart['product_id'])
+    except Exception:
+        produse_in_cos = set() #daca apare o eroare, facem un set gol.
+
     conn.close() #inchidem conexiunea cu baza de date momentan
 
     if df.empty: #daca nu avem date in user_interaction, nu returnam nicio recomandare
@@ -58,9 +70,6 @@ def get_recommendations(target_user_id: int, numar_recomandari: int=5):
     scoruri_asemanare= df_similaritati[target_user_id].sort_values(ascending=False)[1:] #Ignoram prima valoare,
     #deoarece este userul comparat cu el, deci va fi 100% asemanarea.
 
-    #Aflam ce a cumparat deja ca sa nu ii recomandam aceleasi chestii
-    produse_deja_cunoscute = set(df_grupat[df_grupat['user_id'] == target_user_id]['product_id'])
-
     recomandari={} #definim dictiorul de recomandari
 
     #Extragem produsele de la "gemenii lui"
@@ -74,7 +83,7 @@ def get_recommendations(target_user_id: int, numar_recomandari: int=5):
             prod_id = int(rand['product_id']) #int ca sa nu fie cumva id-ul cu virgula
 
             #Daca e un produs NOU pentru user
-            if prod_id not in produse_deja_cunoscute:
+            if prod_id not in produse_in_cos:
                 if prod_id not in recomandari:
                     recomandari[prod_id] = 0
                 recomandari[prod_id] += rand['scor'] * grad_asemanare

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import axios from "axios"
 import { Product } from "@/types"
 import ProductCard from "@/components/ProductCard";
-import { ArrowUpDown, Loader2, SearchX, Store, Sparkles, AlertTriangle, ChevronRight, Flame, Clock, Wheat, CupSoda, Beef, Cookie, Apple, Egg, CakeSlice } from "lucide-react";
+import { ArrowUpDown, Loader2, SearchX, Store, Sparkles, AlertTriangle, ChevronRight, Flame, Clock, Wheat, CupSoda, Beef, Cookie, Apple, Egg, CakeSlice, Search } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
@@ -24,6 +24,7 @@ export default function Home() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams(); //pentru a citi parametrii din url, ex ?category=, etc.
     const currentCategory = searchParams.get("category"); //extragerea categoriei din url, daca exista
+    const currentBrand = searchParams.get("brand"); //extrage brandul din url, daca exista.
 
     const [products, setProducts] = useState<Product[]>([]); //lista de produse, initial goala
     const [recommendations, setRecommendations] = useState<Product[]>([]); 
@@ -44,6 +45,9 @@ export default function Home() {
                 if(currentCategory && currentCategory !== "AI_RECOMMENDATIONS") {
                     requestUrl += `/filter?category=${encodeURIComponent(currentCategory)}`;
                 }
+                else if(currentBrand) {
+                    requestUrl += `${currentCategory ? "&" : "?"}brand=${encodeURIComponent(currentBrand)}`;
+                }
 
                 const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
@@ -63,7 +67,7 @@ export default function Home() {
             }
         }
         fetchData();
-    }, [currentCategory, token]) //de fiecare data cand se schimba categoria din url
+    }, [currentCategory, currentBrand,token]) //de fiecare data cand se schimba categoria din url, sau brandul.
 
     // Impartim produsele in liste speciale pentru "Our Deals" si "Save Me"
     // "Save Me" = produse care expira curand (le simulam prin cele care au pret redus dar si cantitate de expirare)
@@ -71,7 +75,7 @@ export default function Home() {
     // "Our Deals" = produse reduse normal (pret curent < pret de baza) care NU sunt in saveMe
     const dealsProducts = products.filter(p => (p.currentPrice || 0) < (p.price || 0) && (p.nearExpiryQuantity || 0) === 0).slice(0, 5);
     console.log("Toate produsele primite de la Java:", products);
-console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePrice):", dealsProducts);
+    console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePrice):", dealsProducts);
 
     // Alegem ce lista afisam in catalogul mare de jos.
     let baseProductsToDisplay = currentCategory === "AI_RECOMMENDATIONS" ? recommendations : products;
@@ -126,7 +130,7 @@ console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePric
                         ))}
                     </div>
 
-                    {/* BUTONUL OVERLAP MĂGIC */}
+                    {/* BUTONUL OVERLAP*/}
                     <button 
                         onClick={onClickMore}
                         className="absolute top-1/2 -translate-y-1/2 -right-4 sm:-right-6 z-10 w-14 h-14 bg-white border border-gray-100 text-[#134c9c] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,0,0,0.1)] hover:scale-110 hover:bg-blue-50 transition-all duration-300"
@@ -144,7 +148,7 @@ console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePric
             <div className="max-w-[1600px] mx-auto px-4 py-10">
                 
                 {/* HEADLINE (Se ascunde daca am selectat o categorie specifica) */}
-                {!currentCategory && (
+                {!currentCategory && !currentBrand && (
                     <div className="mb-10 text-center animate-in fade-in slide-in-from-bottom-4">
                         <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
                             Fresh Products, made just for you!
@@ -158,7 +162,7 @@ console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePric
                 {/* ========================================================================= */}
                 {/* ZONA DE RANDURI ORIZONTALE (Vizibile doar pe pagina principala de HOME)   */}
                 {/* ========================================================================= */}
-                {!currentCategory && (
+                {!currentCategory && !currentBrand && (
                     <div className="animate-in fade-in">
                         
                         {/* 1. RECOMANDARI AI */}
@@ -217,7 +221,6 @@ console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePric
                 {/* ============================================================== */}
                 <div id="catalog-section" className="px-2 py-4">
                     
-                    {/* SORTARE (OLD CODE WITH BASIC HTML SELECT) */}
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 border-b border-gray-200 pb-4 gap-4">
                         <h2 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
                             {currentCategory === "AI_RECOMMENDATIONS" ? (
@@ -230,6 +233,11 @@ console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePric
                                     <Store size={28} className="text-[#134c9c]" /> 
                                     {currentCategory}
                                 </>
+                            ) : currentBrand ? (
+                                <>
+                                    <Search size={28} className="text-[#134c9c]" /> 
+                                    {currentBrand}
+                                </>
                             ) : (
                                 "Explore the Catalog"
                             )}
@@ -241,7 +249,7 @@ console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePric
                             {/* OLD Select code with basic html <select>, replaced with shadcn ui select later on.
                              <select
                                 value={sortOrder}
-                                ...
+                                ... (deleted)
                             </select> */}
 
                             {/* IMPLEMENTAREA SHADCN UI */}
