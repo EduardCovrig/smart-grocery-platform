@@ -116,6 +116,23 @@ export default function Navbar() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    //enter pe search bar
+    const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && searchQuery.trim().length > 0) {
+            // Ascundem dropdown-ul
+            setShowDropdown(false);
+            
+            // Facem navigarea catre pagina Home cu parametrul curent de search
+            // Pentru simplitate, folosim filtrul de brand 
+            // sau putem adauga "?search=" in viitor.
+            navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
+            
+
+            setSearchQuery("");  //resetam scrisul din searchbar.
+        }
+    };
+
+
     /// Ascunde Navbar pe Login/Register
     if (location.pathname === "/login" || location.pathname === "/register")
         return null;
@@ -182,6 +199,7 @@ export default function Navbar() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onFocus={() => { if(searchResults.length > 0) setShowDropdown(true) }}
+                        onKeyDown={handleSearchSubmit}
                         className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-full focus:outline-none focus:border-black bg-gray-50 transition-colors" 
                     />
                     {isSearching ? (

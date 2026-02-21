@@ -5,7 +5,7 @@ import ProductCard from "@/components/ProductCard";
 import { ArrowUpDown, Loader2, SearchX, Store, Sparkles, AlertTriangle, ChevronRight, Flame, Clock, Wheat, CupSoda, Beef, Cookie, Apple, Egg, CakeSlice, Search, ArrowLeft, ArrowRight } from "lucide-react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/context/AuthContext";
 
 // Definim lista fixa de categorii cu iconite pentru randul de 7 patratele
@@ -25,6 +25,8 @@ export default function Home() {
     const [searchParams] = useSearchParams(); //pentru a citi parametrii din url, ex ?category=, etc.
     const currentCategory = searchParams.get("category"); //extragerea categoriei din url, daca exista
     const currentBrand = searchParams.get("brand"); //extrage brandul din url, daca exista.
+    const currentFilter = searchParams.get("filter");
+    const currentSearch = searchParams.get("search");
 
     const [products, setProducts] = useState<Product[]>([]); //lista de produse, initial goala
     const [recommendations, setRecommendations] = useState<Product[]>([]); 
@@ -38,11 +40,10 @@ export default function Home() {
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 40;
 
-    const currentFilter = searchParams.get("filter");
-
     useEffect(() => {
         setCurrentPage(1);
-    }, [currentCategory, currentBrand, currentFilter, sortOrder]);
+        window.scrollTo(0, 0);
+    }, [currentCategory, currentBrand, currentFilter, currentSearch, sortOrder]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -52,11 +53,15 @@ export default function Home() {
      
                 let requestUrl = `${apiUrl}/products`;
                 // daca s-a dat o categorie in url SI NU E CEA DE AI, adaugam la request
-                if(currentCategory && currentCategory !== "AI_RECOMMENDATIONS") {
+                if (currentSearch) {
+                    // Daca avem query de search (dat din Enter in Navbar)
+                    requestUrl = `${apiUrl}/products/search?query=${encodeURIComponent(currentSearch)}`;
+                } 
+                else if (currentCategory && currentCategory !== "AI_RECOMMENDATIONS") {
                     requestUrl += `/filter?category=${encodeURIComponent(currentCategory)}`;
-                }
-                else if(currentBrand) {
-                    requestUrl += `${currentCategory ? "&" : "?"}brand=${encodeURIComponent(currentBrand)}`;
+                } 
+                else if (currentBrand) {
+                    requestUrl += `/filter?brand=${encodeURIComponent(currentBrand)}`;
                 }
 
                 const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
@@ -77,18 +82,25 @@ export default function Home() {
             }
         }
         fetchData();
-    }, [currentCategory, currentBrand,token]) //de fiecare data cand se schimba categoria din url, sau brandul.
+    }, [currentCategory, currentBrand, currentSearch, token]) //de fiecare data cand se schimba categoria din url, sau brandul.
 
     // Impartim produsele in liste speciale pentru "Our Deals" si "Save Me"
     // "Save Me" = produse care expira curand (le simulam prin cele care au pret redus dar si cantitate de expirare)
-    const saveMeProducts = products.filter(p => (p.nearExpiryQuantity || 0) > 0).slice(0, 5);
+    const saveMeProducts = products.filter(p => (p.nearExpiryQuantity || 0) > 0);
     // "Our Deals" = produse reduse normal (pret curent < pret de baza) care NU sunt in saveMe
-    const dealsProducts = products.filter(p => (p.currentPrice || 0) < (p.price || 0) && (p.nearExpiryQuantity || 0) === 0).slice(0, 5);
+    const dealsProducts = products.filter(p => (p.currentPrice || 0) < (p.price || 0) && (p.nearExpiryQuantity || 0) === 0);
     console.log("Toate produsele primite de la Java:", products);
     console.log("Produsele pentru OUR DEALS (trebuie sa aiba currentPrice < basePrice):", dealsProducts);
 
     // Alegem ce lista afisam in catalogul mare de jos.
-    let baseProductsToDisplay = currentCategory === "AI_RECOMMENDATIONS" ? recommendations : products;
+    let baseProductsToDisplay = products;
+    if (currentCategory === "AI_RECOMMENDATIONS") {
+        baseProductsToDisplay = recommendations;
+    } else if (currentFilter === "deals") {
+        baseProductsToDisplay = dealsProducts;
+    } else if (currentFilter === "expiring") {
+        baseProductsToDisplay = saveMeProducts;
+    }
 
     const sortedProducts = [...baseProductsToDisplay].sort((a, b) => { //sortare produse intern doar pe front, 
     // fara a face request nou la backend pt a fi mai optim si mai rapid.
@@ -159,14 +171,14 @@ export default function Home() {
         );
     };
     
-    const showHeroAndRows = !currentCategory && !currentBrand && !currentFilter; //ascundem headerele daca exsita filtru
+    const isMainHomeView = !currentCategory && !currentBrand && !currentFilter && !currentSearch;
 
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-[1600px] mx-auto px-4 py-10">
                 
                 {/* HEADLINE (Se ascunde daca am selectat o categorie specifica) */}
-                {showHeroAndRows && (
+                {isMainHomeView && (
                     <div className="mb-10 text-center animate-in fade-in slide-in-from-bottom-4">
                         <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
                             Fresh Products, made just for you!
@@ -180,7 +192,7 @@ export default function Home() {
                 {/* ========================================================================= */}
                 {/* ZONA DE RANDURI ORIZONTALE (Vizibile doar pe pagina principala de HOME)   */}
                 {/* ========================================================================= */}
-                {showHeroAndRows && (
+                {isMainHomeView && (
                     <div className="animate-in fade-in">
                         
                         {/* 1. RECOMANDARI AI */}
@@ -243,7 +255,12 @@ export default function Home() {
                     
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 border-b border-gray-200 pb-4 gap-4">
                         <h2 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-                            {currentCategory === "AI_RECOMMENDATIONS" ? (
+                            {currentSearch ? (
+                                <>
+                                    <Search size={28} className="text-[#134c9c]" />
+                                    Search results for: "{currentSearch}"
+                                </>
+                            ) : currentCategory === "AI_RECOMMENDATIONS" ? (
                                 <>
                                     <Sparkles size={28} className="text-[#134c9c]" />
                                     Your Personalized Catalog
@@ -308,7 +325,9 @@ export default function Home() {
                                 No products found!
                             </h1>
                             <div className="text-gray-500 mb-8 max-w-lg">
-                                <p className="mb-0">It looks like we are currently out of stock for <strong className="text-[#134c9c]">{currentCategory === "AI_RECOMMENDATIONS" ? "Recommendations" : currentFilter === "deals" ? "Deals" : currentFilter === "expiring" ? "Clearance" : currentCategory || currentBrand}</strong>.</p>
+                                <p className="mb-0">It looks like we are currently out of stock for <strong className="text-[#134c9c]">
+                                    {currentSearch ? `"${currentSearch}"` : currentCategory === "AI_RECOMMENDATIONS" ? "Recommendations" : currentFilter === "deals" ? "Deals" : currentFilter === "expiring" ? "Clearance" : currentCategory || currentBrand}
+                                </strong>.</p>
                                 <p>Try exploring other <strong className="text-[#1c7d1c]">fresh</strong> categories!</p>
                             </div>
                             <Link to='/'>

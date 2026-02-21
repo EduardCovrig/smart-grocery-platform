@@ -44,75 +44,57 @@ interface OrderDetails {
     userEmail?: string;
 }
 
-// --- MOCK DATA PENTRU GRAFICE ---
-const dataWeek = [
-    { name: 'Mon', sales: 4000 }, { name: 'Tue', sales: 3000 }, { name: 'Wed', sales: 5000 },
-    { name: 'Thu', sales: 2780 }, { name: 'Fri', sales: 6890 }, { name: 'Sat', sales: 8390 }, { name: 'Sun', sales: 7490 },
-];
-const dataMonth = [
-    { name: 'Week 1', sales: 12500 }, { name: 'Week 2', sales: 15200 }, 
-    { name: 'Week 3', sales: 18400 }, { name: 'Week 4', sales: 22100 },
-];
-const dataYear = [
-    { name: 'Jan', sales: 45000 }, { name: 'Feb', sales: 52000 }, { name: 'Mar', sales: 48000 },
-    { name: 'Apr', sales: 61000 }, { name: 'May', sales: 59000 }, { name: 'Jun', sales: 65000 },
-    { name: 'Jul', sales: 71000 }, { name: 'Aug', sales: 68000 }, { name: 'Sep', sales: 75000 },
-    { name: 'Oct', sales: 82000 }, { name: 'Nov', sales: 89000 }, { name: 'Dec', sales: 98000 },
-];
-
 export default function AdminDashboard() {
     const { token, user } = useAuth();
     
-    // TAB NAVIGATION
     const [activeTab, setActiveTab] = useState<'dashboard' | 'products' | 'expiring' | 'ordersList' | 'revenue'>('dashboard');
 
-    // STATE DASHBOARD
     const [stats, setStats] = useState({ totalOrders: 0, totalRevenue: 0, expiringProducts: 0 });
     const [isLoadingStats, setIsLoadingStats] = useState(true);
     const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('week');
 
-    // STATE PRODUCTS
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoadingProducts, setIsLoadingProducts] = useState(false);
     const [editingProductId, setEditingProductId] = useState<number | null>(null);
     const [editPriceValue, setEditPriceValue] = useState<string>("");
 
-    // STATE ORDERS & REVENUE
     const [allOrders, setAllOrders] = useState<OrderDetails[]>([]);
     const [isLoadingOrders, setIsLoadingOrders] = useState(false);
     const [orderSearchTerm, setOrderSearchTerm] = useState("");
     const [updatingOrderId, setUpdatingOrderId] = useState<number | null>(null);
     const [statusDrafts, setStatusDrafts] = useState<Record<number, string>>({});
     
-    // Filtru pentru tab-ul de Revenue
     const [revenueFilter, setRevenueFilter] = useState<'today' | 'month' | 'year' | 'all'>('all');
 
-    // --- FETCH DATE INITIALE DASHBOARD ---
     useEffect(() => {
-        const fetchStats = async () => {
+        const fetchStatsAndOrders = async () => {
+            setIsLoadingOrders(true);
             try {
                 const apiUrl = import.meta.env.VITE_API_URL;
-                const response = await axios.get(`${apiUrl}/orders/stats`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
-                setStats(response.data);
+                const headers = { Authorization: `Bearer ${token}` };
+                
+                // Tragem simultan datele pentru KPI-uri sus si toate comenzile pt grafice/lista
+                const [statsRes, ordersRes] = await Promise.all([
+                    axios.get(`${apiUrl}/orders/stats`, { headers }),
+                    axios.get(`${apiUrl}/orders/all`, { headers })
+                ]);
+                
+                setStats(statsRes.data);
+                setAllOrders(ordersRes.data);
             } catch (err) {
-                console.error("Eroare la preluarea statisticilor", err);
+                console.error("Eroare incarcare", err);
             } finally {
                 setIsLoadingStats(false);
+                setIsLoadingOrders(false);
             }
         };
 
-        if (user?.role === "ADMIN") fetchStats();
+        if (user?.role === "ADMIN") fetchStatsAndOrders();
     }, [token, user]);
 
-    // --- FETCH PRODUSE/COMENZI ---
     useEffect(() => {
         if ((activeTab === 'products' || activeTab === 'expiring') && products.length === 0) {
             fetchProductsList();
-        }
-        if ((activeTab === 'ordersList' || activeTab === 'revenue') && allOrders.length === 0) {
-            fetchAllOrders();
         }
     }, [activeTab]);
 
@@ -130,22 +112,6 @@ export default function AdminDashboard() {
         }
     };
 
-    const fetchAllOrders = async () => {
-        setIsLoadingOrders(true);
-        try {
-            const apiUrl = import.meta.env.VITE_API_URL;
-            const res = await axios.get(`${apiUrl}/orders/all`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setAllOrders(res.data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsLoadingOrders(false);
-        }
-    };
-
-    // --- LOGICA COMENZI ---
     const handleUpdateOrderStatus = async (orderId: number) => {
         const newStatus = statusDrafts[orderId];
         if (!newStatus) return;
@@ -154,17 +120,13 @@ export default function AdminDashboard() {
         try {
             const apiUrl = import.meta.env.VITE_API_URL;
             await axios.put(`${apiUrl}/orders/${orderId}/status`, `"${newStatus}"`, {
-                headers: { 
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json"
-                }
+                headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
             });
             setAllOrders(allOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
             const updatedDrafts = { ...statusDrafts };
             delete updatedDrafts[orderId];
             setStatusDrafts(updatedDrafts);
         } catch (err) {
-            console.error(err);
             alert("Failed to update status.");
         } finally {
             setUpdatingOrderId(null);
@@ -173,63 +135,42 @@ export default function AdminDashboard() {
 
     const filteredOrders = allOrders.filter(o => o.id.toString().includes(orderSearchTerm.trim()));
 
-    // --- LOGICA REVENUE ---
     const filteredRevenueOrders = allOrders.filter(o => {
-        if (o.status === "CANCELLED") return false; // Nu numaram comenzile anulate la incasari
+        if (o.status === "CANCELLED") return false;
         const orderDate = new Date(o.createdAt);
         const now = new Date();
-        
-        if (revenueFilter === 'today') {
-            return orderDate.toDateString() === now.toDateString();
-        }
-        if (revenueFilter === 'month') {
-            return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
-        }
-        if (revenueFilter === 'year') {
-            return orderDate.getFullYear() === now.getFullYear();
-        }
-        return true; // 'all'
+        if (revenueFilter === 'today') return orderDate.toDateString() === now.toDateString();
+        if (revenueFilter === 'month') return orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+        if (revenueFilter === 'year') return orderDate.getFullYear() === now.getFullYear();
+        return true; 
     });
 
     const calculatedRevenue = filteredRevenueOrders.reduce((sum, order) => sum + order.totalPrice, 0);
 
-    // --- LOGICA PRODUSE ---
     const handleSavePrice = async (productId: number) => {
         if (!editPriceValue || isNaN(Number(editPriceValue))) return;
         try {
             const apiUrl = import.meta.env.VITE_API_URL;
-            await axios.put(`${apiUrl}/products/${productId}/price?newPrice=${editPriceValue}`, null, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axios.put(`${apiUrl}/products/${productId}/price?newPrice=${editPriceValue}`, null, { headers: { Authorization: `Bearer ${token}` } });
             setProducts(products.map(p => p.id === productId ? { ...p, price: Number(editPriceValue), currentPrice: Number(editPriceValue) } : p));
             setEditingProductId(null);
-        } catch (error) {
-            console.error("Error updating price", error);
-            alert("Failed to update price.");
-        }
+        } catch (error) { alert("Failed to update price."); }
     };
 
     const handleDeleteProduct = async (productId: number) => {
-        if (!window.confirm("Are you sure you want to remove this product entirely from the store?")) return;
+        if (!window.confirm("Remove this product entirely from the store?")) return;
         try {
             const apiUrl = import.meta.env.VITE_API_URL;
-            await axios.delete(`${apiUrl}/products/${productId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axios.delete(`${apiUrl}/products/${productId}`, { headers: { Authorization: `Bearer ${token}` } });
             setProducts(products.filter(p => p.id !== productId));
-        } catch (error) {
-            console.error("Error deleting product", error);
-            alert("Failed to remove product.");
-        }
+        } catch (error) { alert("Failed to remove product."); }
     };
 
     const handleDropClearance = async (productId: number) => {
-        if (!window.confirm("Are you sure you want to discard the expiring stock? The fresh stock will remain available.")) return;
+        if (!window.confirm("Discard expiring stock? The fresh stock will remain available.")) return;
         try {
             const apiUrl = import.meta.env.VITE_API_URL;
-            await axios.put(`${apiUrl}/products/${productId}/drop-clearance`, {}, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axios.put(`${apiUrl}/products/${productId}/drop-clearance`, {}, { headers: { Authorization: `Bearer ${token}` } });
             setProducts(products.map(p => {
                 if (p.id === productId) {
                     return { ...p, stockQuantity: Math.max(0, p.stockQuantity - (p.nearExpiryQuantity || 0)), nearExpiryQuantity: 0 };
@@ -237,23 +178,64 @@ export default function AdminDashboard() {
                 return p;
             }));
             setStats(prev => ({ ...prev, expiringProducts: Math.max(0, prev.expiringProducts - 1) }));
-        } catch (error) {
-            console.error("Error dropping clearance", error);
-            alert("Failed to drop clearance stock.");
-        }
+        } catch (error) { alert("Failed to drop clearance stock."); }
     };
 
-    // Utils
-    const getChartData = () => {
-        if (timeRange === 'month') return dataMonth;
-        if (timeRange === 'year') return dataYear;
-        return dataWeek;
+    // --- GENERARE GRAFIC IN TIMP REAL DIN ALL_ORDERS ---
+    const generateChartData = () => {
+        const validOrders = allOrders.filter(o => o.status !== 'CANCELLED');
+        const now = new Date();
+
+        if (timeRange === 'week') {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const last7Days = Array.from({length: 7}, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (6 - i));
+                return { date: d.toDateString(), name: days[d.getDay()], sales: 0 };
+            });
+
+            validOrders.forEach(o => {
+                const od = new Date(o.createdAt).toDateString();
+                const dayMatch = last7Days.find(d => d.date === od);
+                if (dayMatch) dayMatch.sales += o.totalPrice;
+            });
+            return last7Days;
+        }
+
+        if (timeRange === 'month') {
+            const weeks = [{ name: 'Week 4', sales: 0 }, { name: 'Week 3', sales: 0 }, { name: 'Week 2', sales: 0 }, { name: 'Week 1', sales: 0 }];
+            validOrders.forEach(o => {
+                const od = new Date(o.createdAt);
+                const diffTime = Math.abs(now.getTime() - od.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                if (diffDays <= 7) weeks[3].sales += o.totalPrice;
+                else if (diffDays <= 14) weeks[2].sales += o.totalPrice;
+                else if (diffDays <= 21) weeks[1].sales += o.totalPrice;
+                else if (diffDays <= 28) weeks[0].sales += o.totalPrice;
+            });
+            return weeks;
+        }
+
+        if (timeRange === 'year') {
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const yearData = months.map(m => ({ name: m, sales: 0 }));
+            validOrders.forEach(o => {
+                const od = new Date(o.createdAt);
+                if (od.getFullYear() === now.getFullYear()) {
+                    yearData[od.getMonth()].sales += o.totalPrice;
+                }
+            });
+            return yearData;
+        }
+        return [];
     };
+
     const getChartTitle = () => {
-        if (timeRange === 'month') return "Monthly Revenue";
-        if (timeRange === 'year') return "Yearly Revenue";
-        return "Weekly Revenue";
+        if (timeRange === 'month') return "Monthly Revenue (Last 28 Days)";
+        if (timeRange === 'year') return `Yearly Revenue (${new Date().getFullYear()})`;
+        return "Weekly Revenue (Last 7 Days)";
     };
+    
     const formatDate = (dateString: string) => {
         return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(dateString));
     };
@@ -271,14 +253,11 @@ export default function AdminDashboard() {
 
     const expiringProductsList = products.filter(p => (p.nearExpiryQuantity || 0) > 0);
 
-    if (!user || user.role !== "ADMIN") {
-        return <Navigate to="/" replace />;
-    }
+    if (!user || user.role !== "ADMIN") return <Navigate to="/" replace />;
     if (isLoadingStats) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={50}/></div>;
 
     return (
         <div className="flex h-[calc(100vh-76px)] overflow-hidden bg-gray-50 flex-col md:flex-row">
-            
             {/* SIDEBAR ADMIN */}
             <div className="w-full md:w-64 bg-slate-900 text-white p-6 flex flex-col gap-2 shrink-0 overflow-y-auto border-r border-slate-800">
                 <div className="flex items-center gap-3 mb-6 border-b border-slate-700 pb-4">
@@ -286,57 +265,21 @@ export default function AdminDashboard() {
                     <span className="font-black text-xl tracking-wider">ADMIN PANEL</span>
                 </div>
                 
-                <button 
-                    onClick={() => setActiveTab('dashboard')}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'dashboard' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}
-                >
-                    <LayoutDashboard size={20} /> Overview
+                <button onClick={() => setActiveTab('dashboard')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'dashboard' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}><LayoutDashboard size={20} /> Overview</button>
+                <button onClick={() => setActiveTab('revenue')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'revenue' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}><TrendingUp size={20} /> Revenue Analytics</button>
+                <button onClick={() => setActiveTab('ordersList')} className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'ordersList' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}><div className="flex items-center gap-3"><ShoppingCart size={20} /> Orders</div></button>
+                <button onClick={() => setActiveTab('products')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'products' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}><Box size={20} /> Products List</button>
+                <button onClick={() => setActiveTab('expiring')} className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'expiring' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}>
+                    <div className="flex items-center gap-3"><Clock size={20} /> Clearance</div>
+                    {stats.expiringProducts > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{stats.expiringProducts}</span>}
                 </button>
-
-                <button 
-                    onClick={() => setActiveTab('revenue')}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'revenue' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}
-                >
-                    <TrendingUp size={20} /> Revenue Analytics
-                </button>
-
-                <button 
-                    onClick={() => setActiveTab('ordersList')}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'ordersList' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}
-                >
-                    <ShoppingCart size={20} /> Orders
-                </button>
-
-                <button 
-                    onClick={() => setActiveTab('products')}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'products' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}
-                >
-                    <Box size={20} /> Products List
-                </button>
-
-                <button 
-                    onClick={() => setActiveTab('expiring')}
-                    className={`flex items-center justify-between px-4 py-3 rounded-xl font-bold transition-all w-full text-left ${activeTab === 'expiring' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-300 hover:text-white'}`}
-                >
-                    <div className="flex items-center gap-3">
-                        <Clock size={20} /> Clearance
-                    </div>
-                    {stats.expiringProducts > 0 && (
-                        <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{stats.expiringProducts}</span>
-                    )}
-                </button>
-
-                <Link to="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors mt-auto pt-4">
-                    <ArrowLeft size={20} /> Exit to Store
-                </Link>
+                <Link to="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-slate-400 hover:bg-slate-800 hover:text-white transition-colors mt-auto pt-4"><ArrowLeft size={20} /> Exit to Store</Link>
             </div>
 
             {/* MAIN CONTENT */}
             <div className="flex-1 p-6 lg:p-8 overflow-y-auto">
                 
-                {/* ------------------------------------------------------------------------- */}
                 {/* TAB 1: OVERVIEW DASHBOARD */}
-                {/* ------------------------------------------------------------------------- */}
                 {activeTab === 'dashboard' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2">
                         <div className="mb-6">
@@ -344,17 +287,11 @@ export default function AdminDashboard() {
                             <p className="text-gray-500">Welcome back, {user.firstName}. Here's what's happening today.</p>
                         </div>
 
-                        {/* KPI CARDS */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                            <Card 
-                                onClick={() => setActiveTab('revenue')}
-                                className="border-none shadow-sm cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-green-200 transition-all"
-                            >
+                            <Card onClick={() => setActiveTab('revenue')} className="border-none shadow-sm cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-green-200 transition-all">
                                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-bold text-green-600 uppercase tracking-widest">Total Revenue</CardTitle>
-                                    <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
-                                        <TrendingUp size={20} />
-                                    </div>
+                                    <div className="w-10 h-10 bg-green-100 text-green-600 rounded-full flex items-center justify-center"><TrendingUp size={20} /></div>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-3xl lg:text-4xl font-black text-gray-900">{stats.totalRevenue.toFixed(2)} Lei</div>
@@ -362,15 +299,10 @@ export default function AdminDashboard() {
                                 </CardContent>
                             </Card>
 
-                            <Card 
-                                onClick={() => setActiveTab('ordersList')}
-                                className="border-none shadow-sm cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-blue-200 transition-all"
-                            >
+                            <Card onClick={() => setActiveTab('ordersList')} className="border-none shadow-sm cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-blue-200 transition-all">
                                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-bold text-blue-600 uppercase tracking-widest">Total Orders</CardTitle>
-                                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-                                        <PackageOpen size={20} />
-                                    </div>
+                                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center"><PackageOpen size={20} /></div>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-3xl lg:text-4xl font-black text-gray-900">{stats.totalOrders}</div>
@@ -378,15 +310,10 @@ export default function AdminDashboard() {
                                 </CardContent>
                             </Card>
 
-                            <Card 
-                                onClick={() => setActiveTab('expiring')}
-                                className="border-none shadow-sm cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-orange-200 transition-all"
-                            >
+                            <Card onClick={() => setActiveTab('expiring')} className="border-none shadow-sm cursor-pointer hover:shadow-lg hover:ring-2 hover:ring-orange-200 transition-all">
                                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                                     <CardTitle className="text-sm font-bold text-orange-500 uppercase tracking-widest">Action Needed</CardTitle>
-                                    <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center">
-                                        <AlertTriangle size={20} />
-                                    </div>
+                                    <div className="w-10 h-10 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center"><AlertTriangle size={20} /></div>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-3xl lg:text-4xl font-black text-orange-600">{stats.expiringProducts}</div>
@@ -395,7 +322,6 @@ export default function AdminDashboard() {
                             </Card>
                         </div>
 
-                        {/* CHART COMPLET */}
                         <Card className="border-none shadow-sm p-4 flex flex-col w-full">
                             <CardHeader className="pb-0 mb-4">
                                 <CardTitle className="text-xl font-black text-gray-900">{getChartTitle()}</CardTitle>
@@ -403,7 +329,7 @@ export default function AdminDashboard() {
                             <CardContent>
                                 <div style={{ width: '100%', height: 300 }}>
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={getChartData()} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                        <AreaChart data={generateChartData()} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
                                                     <stop offset="5%" stopColor="#134c9c" stopOpacity={0.3}/>
@@ -428,9 +354,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* ------------------------------------------------------------------------- */}
-                {/* TAB 2: REVENUE ANALYTICS */}
-                {/* ------------------------------------------------------------------------- */}
+                {/* TAB: REVENUE ANALYTICS */}
                 {activeTab === 'revenue' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2">
                         <div className="mb-6 flex justify-between items-end">
@@ -446,7 +370,6 @@ export default function AdminDashboard() {
                             <div className="flex justify-center p-10"><Loader2 className="animate-spin text-green-600" size={40}/></div>
                         ) : (
                             <div className="space-y-6">
-                                {/* CARD MARE CU FILTRE SI TOTAL */}
                                 <Card className="border-none shadow-sm bg-gradient-to-br from-green-50 to-white overflow-hidden">
                                     <CardContent className="p-8">
                                         <div className="flex flex-col md:flex-row justify-between items-center gap-6">
@@ -456,36 +379,15 @@ export default function AdminDashboard() {
                                                 <p className="text-xs text-gray-400 mt-2">From {filteredRevenueOrders.length} valid orders.</p>
                                             </div>
                                             <div className="flex bg-white p-1 rounded-xl shadow-sm border border-gray-100">
-                                                <button 
-                                                    onClick={() => setRevenueFilter('today')} 
-                                                    className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${revenueFilter === 'today' ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
-                                                >
-                                                    Today
-                                                </button>
-                                                <button 
-                                                    onClick={() => setRevenueFilter('month')} 
-                                                    className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${revenueFilter === 'month' ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
-                                                >
-                                                    This Month
-                                                </button>
-                                                <button 
-                                                    onClick={() => setRevenueFilter('year')} 
-                                                    className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${revenueFilter === 'year' ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
-                                                >
-                                                    This Year
-                                                </button>
-                                                <button 
-                                                    onClick={() => setRevenueFilter('all')} 
-                                                    className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${revenueFilter === 'all' ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
-                                                >
-                                                    All Time
-                                                </button>
+                                                <button onClick={() => setRevenueFilter('today')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${revenueFilter === 'today' ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}>Today</button>
+                                                <button onClick={() => setRevenueFilter('month')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${revenueFilter === 'month' ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}>This Month</button>
+                                                <button onClick={() => setRevenueFilter('year')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${revenueFilter === 'year' ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}>This Year</button>
+                                                <button onClick={() => setRevenueFilter('all')} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${revenueFilter === 'all' ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}>All Time</button>
                                             </div>
                                         </div>
                                     </CardContent>
                                 </Card>
 
-                                {/* LISTA DE COMENZI CARE AU CONTRIBUIT */}
                                 <Card className="border-none shadow-sm">
                                     <CardHeader>
                                         <CardTitle className="text-lg font-black text-gray-800 flex items-center gap-2">
@@ -509,11 +411,7 @@ export default function AdminDashboard() {
                                                         <tr key={order.id} className="hover:bg-gray-50/50 transition-colors">
                                                             <td className="p-4 font-bold text-gray-900">#{order.id}</td>
                                                             <td className="p-4 text-sm text-gray-500">{formatDate(order.createdAt)}</td>
-                                                            <td className="p-4">
-                                                                <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider border ${getStatusColor(order.status)}`}>
-                                                                    {order.status}
-                                                                </span>
-                                                            </td>
+                                                            <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider border ${getStatusColor(order.status)}`}>{order.status}</span></td>
                                                             <td className="p-4 font-black text-green-600 text-right">+{order.totalPrice.toFixed(2)} Lei</td>
                                                         </tr>
                                                     ))}
@@ -528,9 +426,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* ------------------------------------------------------------------------- */}
                 {/* TAB 3: ORDERS LIST */}
-                {/* ------------------------------------------------------------------------- */}
                 {activeTab === 'ordersList' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2">
                         <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -541,13 +437,7 @@ export default function AdminDashboard() {
                                 <p className="text-gray-500">View and update the status of all customer orders.</p>
                             </div>
                             <div className="relative w-full md:w-72">
-                                <Input 
-                                    type="text" 
-                                    placeholder="Search by Order ID..." 
-                                    value={orderSearchTerm}
-                                    onChange={(e) => setOrderSearchTerm(e.target.value)}
-                                    className="pl-10 h-12 bg-white rounded-xl border-gray-200"
-                                />
+                                <Input type="text" placeholder="Search by Order ID..." value={orderSearchTerm} onChange={(e) => setOrderSearchTerm(e.target.value)} className="pl-10 h-12 bg-white rounded-xl border-gray-200" />
                                 <Search size={18} className="absolute left-3 top-3.5 text-gray-400" />
                             </div>
                         </div>
@@ -580,25 +470,14 @@ export default function AdminDashboard() {
                                                             <td className="p-4 text-sm text-gray-600">{formatDate(order.createdAt)}</td>
                                                             <td className="p-4 text-sm text-gray-600">
                                                                 {order.items.length} items
-                                                                <div className="text-[10px] text-gray-400 mt-1 line-clamp-1">
-                                                                    {order.items.map(i => i.productName).join(", ")}
-                                                                </div>
+                                                                <div className="text-[10px] text-gray-400 mt-1 line-clamp-1">{order.items.map(i => i.productName).join(", ")}</div>
                                                             </td>
                                                             <td className="p-4 font-bold text-[#134c9c]">{order.totalPrice.toFixed(2)} Lei</td>
-                                                            <td className="p-4">
-                                                                <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider border ${getStatusColor(order.status)}`}>
-                                                                    {order.status}
-                                                                </span>
-                                                            </td>
+                                                            <td className="p-4"><span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider border ${getStatusColor(order.status)}`}>{order.status}</span></td>
                                                             <td className="p-4 w-[280px]">
                                                                 <div className="flex gap-2">
-                                                                    <Select 
-                                                                        value={draftStatus} 
-                                                                        onValueChange={(val) => setStatusDrafts({ ...statusDrafts, [order.id]: val })}
-                                                                    >
-                                                                        <SelectTrigger className="w-full bg-white border-gray-200 h-9 text-xs font-bold">
-                                                                            <SelectValue />
-                                                                        </SelectTrigger>
+                                                                    <Select value={draftStatus} onValueChange={(val) => setStatusDrafts({ ...statusDrafts, [order.id]: val })}>
+                                                                        <SelectTrigger className="w-full bg-white border-gray-200 h-9 text-xs font-bold"><SelectValue /></SelectTrigger>
                                                                         <SelectContent>
                                                                             <SelectItem value="CONFIRMED">CONFIRMED</SelectItem>
                                                                             <SelectItem value="PROCESSING">PROCESSING</SelectItem>
@@ -607,14 +486,8 @@ export default function AdminDashboard() {
                                                                             <SelectItem value="CANCELLED">CANCELLED</SelectItem>
                                                                         </SelectContent>
                                                                     </Select>
-                                                                    
                                                                     {hasChanged && (
-                                                                        <Button 
-                                                                            size="sm"
-                                                                            className="bg-green-600 hover:bg-green-700 h-9"
-                                                                            onClick={() => handleUpdateOrderStatus(order.id)}
-                                                                            disabled={updatingOrderId === order.id}
-                                                                        >
+                                                                        <Button size="sm" className="bg-green-600 hover:bg-green-700 h-9" onClick={() => handleUpdateOrderStatus(order.id)} disabled={updatingOrderId === order.id}>
                                                                             {updatingOrderId === order.id ? <Loader2 className="animate-spin h-4 w-4" /> : <Save size={16} />}
                                                                         </Button>
                                                                     )}
@@ -633,9 +506,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* ------------------------------------------------------------------------- */}
                 {/* TAB 4: PRODUCTS LIST */}
-                {/* ------------------------------------------------------------------------- */}
                 {activeTab === 'products' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2">
                         <div className="mb-6 flex justify-between items-end">
@@ -676,19 +547,11 @@ export default function AdminDashboard() {
                                                             </div>
                                                         </td>
                                                         <td className="p-4 text-sm font-medium text-gray-600">{prod.categoryName}</td>
-                                                        <td className="p-4 text-sm font-medium text-gray-600">
-                                                            {prod.stockQuantity} {prod.unitOfMeasure}
-                                                        </td>
+                                                        <td className="p-4 text-sm font-medium text-gray-600">{prod.stockQuantity} {prod.unitOfMeasure}</td>
                                                         <td className="p-4 w-[200px]">
                                                             {editingProductId === prod.id ? (
                                                                 <div className="flex items-center gap-2">
-                                                                    <Input 
-                                                                        type="number" 
-                                                                        value={editPriceValue} 
-                                                                        onChange={(e) => setEditPriceValue(e.target.value)}
-                                                                        className="w-24 h-8 bg-white px-2"
-                                                                        autoFocus
-                                                                    />
+                                                                    <Input type="number" value={editPriceValue} onChange={(e) => setEditPriceValue(e.target.value)} className="w-24 h-8 bg-white px-2" autoFocus />
                                                                     <button onClick={() => handleSavePrice(prod.id)} className="p-1.5 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors"><Save size={16}/></button>
                                                                     <button onClick={() => setEditingProductId(null)} className="p-1.5 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"><X size={16}/></button>
                                                                 </div>
@@ -698,18 +561,8 @@ export default function AdminDashboard() {
                                                         </td>
                                                         <td className="p-4">
                                                             <div className="flex items-center justify-center gap-3">
-                                                                <button 
-                                                                    onClick={() => { setEditingProductId(prod.id); setEditPriceValue(prod.price.toString()); }}
-                                                                    className="text-blue-500 hover:text-blue-700 transition-colors" title="Edit Price"
-                                                                >
-                                                                    <Edit2 size={18} />
-                                                                </button>
-                                                                <button 
-                                                                    onClick={() => handleDeleteProduct(prod.id)}
-                                                                    className="text-red-400 hover:text-red-600 transition-colors" title="Remove Product"
-                                                                >
-                                                                    <Trash2 size={18} />
-                                                                </button>
+                                                                <button onClick={() => { setEditingProductId(prod.id); setEditPriceValue(prod.price.toString()); }} className="text-blue-500 hover:text-blue-700 transition-colors" title="Edit Price"><Edit2 size={18} /></button>
+                                                                <button onClick={() => handleDeleteProduct(prod.id)} className="text-red-400 hover:text-red-600 transition-colors" title="Remove Product"><Trash2 size={18} /></button>
                                                             </div>
                                                         </td>
                                                     </tr>
@@ -724,9 +577,7 @@ export default function AdminDashboard() {
                     </div>
                 )}
 
-                {/* ------------------------------------------------------------------------- */}
                 {/* TAB 5: EXPIRING STOCK */}
-                {/* ------------------------------------------------------------------------- */}
                 {activeTab === 'expiring' && (
                     <div className="animate-in fade-in slide-in-from-bottom-2">
                         <div className="mb-6">
@@ -777,10 +628,7 @@ export default function AdminDashboard() {
                                                             </td>
                                                             <td className="p-4">
                                                                 <div className="flex items-center justify-center gap-3">
-                                                                    <button 
-                                                                        onClick={() => handleDropClearance(prod.id)}
-                                                                        className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 px-3 py-2 rounded-lg transition-colors"
-                                                                    >
+                                                                    <button onClick={() => handleDropClearance(prod.id)} className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 px-3 py-2 rounded-lg transition-colors">
                                                                         <Trash2 size={14} /> Drop from store
                                                                     </button>
                                                                 </div>
